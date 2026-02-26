@@ -3,10 +3,11 @@ import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 /**
- * Integration-conceptual test: verify no roster/student-list endpoints or
- * pages exist at this milestone. This is a structural check — the codebase
- * must not expose any roster data without staff auth, and at M1 no roster
- * endpoints should exist at all.
+ * Structural test: verify no public roster endpoints or pages exist.
+ *
+ * Families accessing their OWN students via RLS-protected adapters is allowed.
+ * What must NOT exist: public roster routes, staff roster pages without auth,
+ * or any /roster or /students route registered in the router.
  */
 
 function getAllSourceFiles(dir, files = []) {
@@ -22,27 +23,26 @@ function getAllSourceFiles(dir, files = []) {
   return files;
 }
 
-describe('No roster access (M1)', () => {
-  it('no source file contains a "students" table query', () => {
+describe('No public roster access', () => {
+  it('no source file exposes a /roster or /students route', () => {
     const srcDir = join(process.cwd(), 'src');
     const files = getAllSourceFiles(srcDir);
 
     for (const file of files) {
       const content = readFileSync(file, 'utf-8');
-      // Check for Supabase .from('students') queries — none should exist yet
-      expect(content).not.toMatch(/\.from\(['"]students['"]\)/);
-    }
-  });
-
-  it('no source file exposes a roster route or page', () => {
-    const srcDir = join(process.cwd(), 'src');
-    const files = getAllSourceFiles(srcDir);
-
-    for (const file of files) {
-      const content = readFileSync(file, 'utf-8');
-      // No roster route should be registered
+      // No public roster route should be registered
       expect(content).not.toMatch(/['"]\/roster['"]/);
       expect(content).not.toMatch(/['"]\/students['"]/);
     }
+  });
+
+  it('students adapter only allows family-scoped queries (ownership filter present)', () => {
+    const adapterPath = join(process.cwd(), 'src', 'adapters', 'students.js');
+    const content = readFileSync(adapterPath, 'utf-8');
+
+    // The fetchStudentsByFamily function must filter by family_account_id
+    expect(content).toMatch(/family_account_id/);
+    // There must not be an unfiltered "fetch all students" function
+    expect(content).not.toMatch(/fetchAllStudents/);
   });
 });

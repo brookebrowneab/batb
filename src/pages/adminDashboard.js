@@ -7,8 +7,12 @@ export function renderAdminDashboard() {
     <div class="page">
       <h1>Admin Dashboard</h1>
       <p>Welcome, ${displayName}.</p>
+      <h2>Management</h2>
+      <ul class="admin-links">
+        <li><a href="#/admin/contracts">Contract Management</a></li>
+      </ul>
       <div class="placeholder-notice">
-        Contract management, system configuration, and overrides will be added in future milestones.
+        System configuration and overrides will be added in future milestones.
       </div>
     </div>
   `;

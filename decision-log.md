@@ -81,3 +81,16 @@
 **Rationale:** Minimal dependency footprint for MVP; avoids framework lock-in; Vite provides fast dev/build; hash routing works without server-side configuration.
 
 **Trade-offs:** More manual DOM work than a reactive framework, but acceptable at MVP scope.
+
+---
+
+## D-008 — Re-sign Policy for Contracts
+**Date:** 2026-02-26
+**Decision:** Default behavior is to **disallow** re-signing the same contract version. A unique constraint on (student_id, contract_id) enforces this at the database level. When a new contract version is activated, families must sign the new version; old acceptances remain tied to old versions.
+
+**Rationale:** Prevents duplicate signatures, preserves audit trail, and keeps the acceptance table clean. If admin needs a family to re-sign the same version, they would need to create a new version with the same text (rare edge case).
+
+**Implications:**
+- `contract_acceptances` has a unique index on (student_id, contract_id).
+- Registration completeness evaluates against the **currently active** contract version.
+- Old acceptances are preserved but do not satisfy the active version requirement.

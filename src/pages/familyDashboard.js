@@ -1,14 +1,80 @@
 import { getAuthState } from '../auth.js';
+import { fetchStudentsByFamily } from '../adapters/students.js';
+import { fetchActiveContract, fetchAcceptancesForStudent } from '../adapters/contracts.js';
+import { evaluateRegistration } from '../domain/registration.js';
+
+async function loadRegistrationStatus(userId) {
+  const [studentsResult, contractResult] = await Promise.all([
+    fetchStudentsByFamily(userId),
+    fetchActiveContract(),
+  ]);
+
+  const students = studentsResult.data || [];
+  const activeContract = contractResult.data;
+  const activeContractId = activeContract?.id || null;
+
+  const studentsWithStatus = await Promise.all(
+    students.map(async (student) => {
+      const { data: acceptances } = await fetchAcceptancesForStudent(student.id);
+      const status = evaluateRegistration(student, acceptances || [], activeContractId);
+      return { ...student, registrationStatus: status };
+    }),
+  );
+
+  return { students: studentsWithStatus, activeContract };
+}
+
+function renderStudentCard(student) {
+  const { registrationStatus } = student;
+  const statusClass = registrationStatus.complete ? 'success-box' : 'warning-box';
+  const statusLabel = registrationStatus.complete ? 'Registration Complete' : 'Registration Incomplete';
+
+  return `
+    <div class="student-card ${statusClass}">
+      <h3>${student.first_name || 'Unnamed'} ${student.last_name || 'Student'}</h3>
+      <p class="status-label"><strong>${statusLabel}</strong></p>
+      ${
+        registrationStatus.complete
+          ? '<p>You can now sign up for Dance and Vocal auditions.</p>'
+          : `
+            <p>Missing:</p>
+            <ul>${registrationStatus.missing.map((m) => `<li>${m}</li>`).join('')}</ul>
+          `
+      }
+    </div>
+  `;
+}
 
 export function renderFamilyDashboard() {
   const { user } = getAuthState();
-  return `
-    <div class="page">
-      <h1>Family Dashboard</h1>
-      <p>Welcome, ${user?.email || 'family member'}.</p>
-      <div class="placeholder-notice">
-        Registration forms and scheduling will be available in future milestones.
-      </div>
+  const container = document.createElement('div');
+  container.className = 'page';
+  container.innerHTML = `
+    <h1>Family Dashboard</h1>
+    <p>Welcome, ${user?.email || 'family member'}.</p>
+    <h2>Actions</h2>
+    <nav class="home-actions">
+      <a href="#/family/contract">View & Sign Contract</a>
+    </nav>
+    <h2>Your Students</h2>
+    <div id="students-list"><p>Loading…</p></div>
+    <div class="placeholder-notice" style="margin-top: 1rem;">
+      Student registration forms and photo upload will be available in the next milestone.
     </div>
   `;
+
+  setTimeout(async () => {
+    if (!user) return;
+    const { students } = await loadRegistrationStatus(user.id);
+    const listEl = document.getElementById('students-list');
+    if (!listEl) return;
+
+    if (students.length === 0) {
+      listEl.innerHTML = '<p>No students registered yet.</p>';
+    } else {
+      listEl.innerHTML = students.map(renderStudentCard).join('');
+    }
+  }, 0);
+
+  return container;
 }

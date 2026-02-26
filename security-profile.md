@@ -53,11 +53,15 @@ Primary risks:
   - returns clear conflict errors for clients
 - Apply same approach to DanceSession if capacity is used.
 
-## Storage Security (Photos)
-- Photos stored in private bucket.
-- Access via signed URLs or authenticated retrieval with role checks.
-- File paths use UUIDs; never predictable student names.
-- Families can only retrieve their own photos; staff can retrieve all as permitted.
+## Storage Security (Photos) — Confirmed M3
+- **Bucket:** `student-photos`, private (public=false).
+- **Path convention:** `{auth.uid()}/{crypto.randomUUID()}.{ext}` — never uses student names.
+- **RLS policies on storage.objects:**
+  - Families can INSERT/SELECT/UPDATE only in their own UID folder.
+  - Staff can SELECT all photos (for rosters/packs).
+  - No DELETE policy for families (admin-only via dashboard).
+- **Access:** Signed URLs with 5-minute expiry for display; never public URLs.
+- **Verified:** UUID paths, folder-based ownership, no predictable filenames.
 
 ## Input Validation
 - Validate required fields server-side (or via DB constraints where possible).

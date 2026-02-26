@@ -94,3 +94,15 @@
 - `contract_acceptances` has a unique index on (student_id, contract_id).
 - Registration completeness evaluates against the **currently active** contract version.
 - Old acceptances are preserved but do not satisfy the active version requirement.
+
+---
+
+## D-009 — Student Registration Data Fields
+**Date:** 2026-02-26
+**Decision:** Student registration collects: first_name, last_name, grade (student); parent_first_name, parent_last_name, parent_email, parent_phone (parent/guardian). Photo upload is required.
+
+**Rationale:** Minimal PII collection per compliance notes (minors). Sufficient for audition logistics, packs, and communication.
+
+**Implications:**
+- Parent fields added to students table via migration 00006.
+- Registration completeness now requires all 4 parent fields in addition to student fields, photo, and contract acceptance.

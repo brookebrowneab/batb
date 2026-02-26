@@ -27,6 +27,7 @@ export default [
         history: 'readonly',
         location: 'readonly',
         import: 'readonly',
+        crypto: 'readonly',
       },
     },
     rules: {

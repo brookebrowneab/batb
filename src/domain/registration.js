@@ -3,10 +3,15 @@
  *
  * Registration is complete only when ALL of the following are true:
  * 1. Required student fields are filled (first_name, last_name, grade)
- * 2. Photo has been uploaded (photo_storage_path is non-empty)
- * 3. A contract acceptance exists for the active contract version,
+ * 2. Required parent fields are filled (parent_first_name, parent_last_name, parent_email, parent_phone)
+ * 3. Photo has been uploaded (photo_storage_path is non-empty)
+ * 4. A contract acceptance exists for the active contract version,
  *    with both student and parent typed signatures
  */
+
+function filled(val) {
+  return Boolean(val && typeof val === 'string' && val.trim());
+}
 
 /**
  * Check if all required student fields are present.
@@ -15,10 +20,21 @@
  */
 export function hasRequiredStudentFields(student) {
   if (!student) return false;
-  return Boolean(
-    student.first_name && student.first_name.trim() &&
-    student.last_name && student.last_name.trim() &&
-    student.grade && student.grade.trim()
+  return filled(student.first_name) && filled(student.last_name) && filled(student.grade);
+}
+
+/**
+ * Check if all required parent/guardian fields are present.
+ * @param {object} student
+ * @returns {boolean}
+ */
+export function hasRequiredParentFields(student) {
+  if (!student) return false;
+  return (
+    filled(student.parent_first_name) &&
+    filled(student.parent_last_name) &&
+    filled(student.parent_email) &&
+    filled(student.parent_phone)
   );
 }
 
@@ -29,7 +45,7 @@ export function hasRequiredStudentFields(student) {
  */
 export function hasPhoto(student) {
   if (!student) return false;
-  return Boolean(student.photo_storage_path && student.photo_storage_path.trim());
+  return filled(student.photo_storage_path);
 }
 
 /**
@@ -43,8 +59,8 @@ export function hasValidAcceptance(acceptances, activeContractId) {
   return acceptances.some(
     (a) =>
       a.contract_id === activeContractId &&
-      a.student_typed_signature && a.student_typed_signature.trim() &&
-      a.parent_typed_signature && a.parent_typed_signature.trim()
+      filled(a.student_typed_signature) &&
+      filled(a.parent_typed_signature),
   );
 }
 
@@ -60,6 +76,9 @@ export function evaluateRegistration(student, acceptances, activeContractId) {
 
   if (!hasRequiredStudentFields(student)) {
     missing.push('Required student information (name, grade)');
+  }
+  if (!hasRequiredParentFields(student)) {
+    missing.push('Parent/guardian information');
   }
   if (!hasPhoto(student)) {
     missing.push('Student photo');

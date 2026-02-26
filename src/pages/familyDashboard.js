@@ -54,13 +54,11 @@ export function renderFamilyDashboard() {
     <p>Welcome, ${user?.email || 'family member'}.</p>
     <h2>Actions</h2>
     <nav class="home-actions">
+      <a href="#/family/register">Register Student</a>
       <a href="#/family/contract">View & Sign Contract</a>
     </nav>
     <h2>Your Students</h2>
     <div id="students-list"><p>Loading…</p></div>
-    <div class="placeholder-notice" style="margin-top: 1rem;">
-      Student registration forms and photo upload will be available in the next milestone.
-    </div>
   `;
 
   setTimeout(async () => {
@@ -70,7 +68,7 @@ export function renderFamilyDashboard() {
     if (!listEl) return;
 
     if (students.length === 0) {
-      listEl.innerHTML = '<p>No students registered yet.</p>';
+      listEl.innerHTML = '<p>No students registered yet. <a href="#/family/register">Start registration</a>.</p>';
     } else {
       listEl.innerHTML = students.map(renderStudentCard).join('');
     }

@@ -51,3 +51,33 @@
 **Decision:** **Claude Code** will be the single AI coding platform for the build plan and prompts.
 
 **Rationale:** User selection.
+
+---
+
+## D-006 — Role Detection Approach
+**Date:** 2026-02-26
+**Decision:** Use a `staff_profiles` table lookup for role detection rather than JWT custom claims.
+
+**Rationale:**
+- Simpler to implement with standard Supabase setup (no Edge Functions needed to set custom claims).
+- Profile table is directly queryable with RLS, making it the natural enforcement boundary.
+- Role changes take effect on next page load / session refresh without token reissuance.
+
+**Trade-offs:**
+- Requires an extra query on auth state change to fetch the staff profile.
+- Slightly slower than reading from JWT, but acceptable for ~200-user scale.
+
+**Implications:**
+- `staff_profiles` table with RLS is the source of truth for roles.
+- Client checks `staff_profiles` after auth; if no row exists, user is treated as family.
+- RLS policies on other tables will reference `staff_profiles` for staff/admin checks.
+
+---
+
+## D-007 — Frontend Framework
+**Date:** 2026-02-26
+**Decision:** Vanilla JavaScript with Vite (no React/Vue/Svelte). Hash-based client-side router for GitHub Pages compatibility.
+
+**Rationale:** Minimal dependency footprint for MVP; avoids framework lock-in; Vite provides fast dev/build; hash routing works without server-side configuration.
+
+**Trade-offs:** More manual DOM work than a reactive framework, but acceptable at MVP scope.

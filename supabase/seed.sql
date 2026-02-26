@@ -1,0 +1,15 @@
+-- Seed script for local development.
+--
+-- IMPORTANT: Run this AFTER creating the auth users in Supabase Dashboard or via CLI.
+-- Steps:
+--   1. In Supabase Dashboard → Authentication → Users, create two users:
+--      - admin@example.com  (password: admin123456)
+--      - director@example.com (password: director123456)
+--   2. Copy their UUIDs from the users list.
+--   3. Replace the placeholder UUIDs below with the real ones.
+--   4. Run this SQL in the Supabase SQL Editor.
+
+-- Replace these UUIDs with the actual auth.users IDs after creating the users:
+-- INSERT INTO public.staff_profiles (id, role, display_name, email) VALUES
+--   ('REPLACE-WITH-ADMIN-UUID', 'admin', 'Test Admin', 'admin@example.com'),
+--   ('REPLACE-WITH-DIRECTOR-UUID', 'director', 'Test Director', 'director@example.com');

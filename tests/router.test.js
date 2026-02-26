@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest';
 
 // Import the router module to verify it loads correctly
-import { addRoute, currentPath, navigate } from '../src/router.js';
+import { addRoute, currentPath, navigate, setGuard } from '../src/router.js';
 
 describe('Router module', () => {
   it('exports required functions', () => {
     expect(typeof addRoute).toBe('function');
     expect(typeof currentPath).toBe('function');
     expect(typeof navigate).toBe('function');
+    expect(typeof setGuard).toBe('function');
   });
 
   it('currentPath returns "/" when no hash is set', () => {

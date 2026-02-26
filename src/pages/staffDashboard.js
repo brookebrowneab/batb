@@ -7,8 +7,12 @@ export function renderStaffDashboard() {
     <div class="page">
       <h1>Staff Dashboard</h1>
       <p>Welcome, ${displayName}. Role: <strong>${role}</strong></p>
+      <h2>Management</h2>
+      <ul class="admin-links">
+        <li><a href="#/staff/scheduling">Scheduling Configuration</a></li>
+      </ul>
       <div class="placeholder-notice">
-        Rosters, scheduling config, and student profiles will be added in future milestones.
+        Rosters and student profiles will be added in future milestones.
       </div>
     </div>
   `;

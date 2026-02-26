@@ -56,6 +56,7 @@ export function renderFamilyDashboard() {
     <nav class="home-actions">
       <a href="#/family/register">Register Student</a>
       <a href="#/family/contract">View & Sign Contract</a>
+      <a href="#/family/schedule">Audition Schedule</a>
     </nav>
     <h2>Your Students</h2>
     <div id="students-list"><p>Loading…</p></div>

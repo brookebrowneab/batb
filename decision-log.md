@@ -106,3 +106,16 @@
 **Implications:**
 - Parent fields added to students table via migration 00006.
 - Registration completeness now requires all 4 parent fields in addition to student fields, photo, and contract acceptance.
+
+---
+
+## D-010 — Director Scheduling Permissions
+**Date:** 2026-02-26
+**Decision:** Both directors and admins can create and edit audition window configs. Only admins can delete configs. Families can read configs (read-only, for schedule display).
+
+**Rationale:** Directors need operational control of scheduling. Delete is restricted to admin to prevent accidental data loss after bookings exist.
+
+**Implications:**
+- RLS policies grant INSERT/UPDATE to all staff, DELETE to admin only.
+- SELECT is open to all authenticated users (families see dates/times).
+- All config edits are audited via updated_at and updated_by_staff_user_id.

@@ -11,6 +11,8 @@ import { renderAdminDashboard } from './pages/adminDashboard.js';
 import { renderAdminContracts } from './pages/adminContracts.js';
 import { renderFamilyContract } from './pages/familyContract.js';
 import { renderFamilyRegistration } from './pages/familyRegistration.js';
+import { renderStaffScheduling } from './pages/staffScheduling.js';
+import { renderFamilySchedule } from './pages/familySchedule.js';
 
 function renderNav() {
   const { session, role } = getAuthState();
@@ -77,6 +79,8 @@ async function init() {
   addRoute('/admin/contracts', renderAdminContracts);
   addRoute('/family/contract', renderFamilyContract);
   addRoute('/family/register', renderFamilyRegistration);
+  addRoute('/family/schedule', renderFamilySchedule);
+  addRoute('/staff/scheduling', renderStaffScheduling);
   setNotFound(renderNotFound);
 
   // Set auth guard

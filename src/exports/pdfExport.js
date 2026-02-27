@@ -60,7 +60,8 @@ function renderStudentBlock(doc, student, options) {
   const { photoDataUrl, participation, evaluations, title } = options;
   let y = options.startY;
 
-  const estHeight = 35 + 20 + (participation ? 10 : 0)
+  const extraLines = (student.parent2_first_name || student.parent2_email ? 6 : 0) + (student.sings_own_disney_song ? 6 : 0);
+  const estHeight = 35 + 20 + extraLines + (participation ? 10 : 0)
     + Math.max(evaluations.length * 8, 5) + 25 + 10;
 
   if (y + estHeight > FOOTER_Y - 10) {
@@ -90,7 +91,18 @@ function renderStudentBlock(doc, student, options) {
     doc.text(parentLine, infoX, y + 17);
   }
 
-  y += Math.max(PHOTO_SIZE + 2, 22);
+  let extraY = 0;
+  if (student.parent2_first_name || student.parent2_email) {
+    const parent2Line = `Parent 2: ${student.parent2_first_name || ''} ${student.parent2_last_name || ''} | ${student.parent2_email || ''} | ${student.parent2_phone || ''}`;
+    doc.text(parent2Line, infoX, y + 23 + extraY);
+    extraY += 6;
+  }
+  if (student.sings_own_disney_song) {
+    doc.text(`Song: ${student.song_name || 'N/A'}`, infoX, y + 23 + extraY);
+    extraY += 6;
+  }
+
+  y += Math.max(PHOTO_SIZE + 2, 22 + extraY);
 
   if (participation) {
     doc.setFontSize(9);
@@ -168,8 +180,10 @@ export function generateDanceSessionPdf(groupedData, studentDetails) {
     let y = MARGIN + 15;
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
+    const startTime = group.session.start_time || group.session.dance_start_time;
+    const endTime = group.session.end_time || group.session.dance_end_time;
     const sessionLabel = group.session.label
-      || `${formatTime(group.session.start_time)} – ${formatTime(group.session.end_time)}`;
+      || `${formatTime(startTime)} – ${formatTime(endTime)}`;
     doc.text(`${group.session.audition_date} — ${sessionLabel}`, MARGIN, y);
     y += 8;
     doc.setFontSize(9);
@@ -257,7 +271,10 @@ export function generateFullTrackPdf(allStudents, danceRoster, vocalRoster, stud
 
   const danceByStudent = new Map();
   for (const r of danceRoster) {
-    if (r.students?.id) danceByStudent.set(r.students.id, r.dance_sessions);
+    const studentId = r.students?.id;
+    if (!studentId) continue;
+    if (danceByStudent.has(studentId)) continue; // Keep first assigned dance window for summary line.
+    danceByStudent.set(studentId, r.dance_window || r.dance_sessions || null);
   }
   const vocalByStudent = new Map();
   for (const r of vocalRoster) {

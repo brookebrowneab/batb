@@ -5,7 +5,7 @@ import { assembleProfileSummary, validateEvaluationInput } from '../domain/stude
 import { getQueryParams } from '../router.js';
 import { fetchStudentForStaff } from '../adapters/students.js';
 import { getSignedPhotoUrl } from '../adapters/storage.js';
-import { fetchDanceSignupForStudent } from '../adapters/danceSessions.js';
+import { fetchDanceWindowsFromConfig } from '../adapters/danceSessions.js';
 import { fetchVocalBookingForStudent } from '../adapters/vocalBookings.js';
 import {
   fetchEvaluationsForStudent,
@@ -16,13 +16,16 @@ import {
 let profile = null;
 let photoUrl = null;
 let editingEvalId = null;
+let evalFlash = null;
 
 export function renderStaffStudentProfile() {
   const container = document.createElement('div');
   container.className = 'page';
   container.innerHTML = `
-    <h1>Student Profile</h1>
-    <p><a href="#/staff">&larr; Back to Staff Dashboard</a></p>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-md)">
+      <h1 style="margin:0">Student Profile</h1>
+      <button class="btn-ghost" onclick="history.back()" style="min-height:auto;width:auto">← Back</button>
+    </div>
     <div class="form-message" id="profile-msg" aria-live="polite"></div>
     <div id="profile-content"><p>Loading…</p></div>
   `;
@@ -42,7 +45,7 @@ async function loadProfile() {
 
   const [studentResult, danceResult, vocalResult, evalsResult] = await Promise.all([
     fetchStudentForStaff(studentId),
-    fetchDanceSignupForStudent(studentId),
+    fetchDanceWindowsFromConfig(),
     fetchVocalBookingForStudent(studentId),
     fetchEvaluationsForStudent(studentId),
   ]);
@@ -54,12 +57,11 @@ async function loadProfile() {
 
   profile = assembleProfileSummary(
     studentResult.data,
-    danceResult.data,
+    { dance_windows: danceResult.data || [] },
     vocalResult.data,
     evalsResult.data || [],
   );
 
-  // Fetch photo signed URL if photo exists
   photoUrl = null;
   if (profile.student.photo_storage_path) {
     const { url } = await getSignedPhotoUrl(profile.student.photo_storage_path);
@@ -67,6 +69,7 @@ async function loadProfile() {
   }
 
   editingEvalId = null;
+  evalFlash = null;
   renderProfile();
 }
 
@@ -82,39 +85,70 @@ function renderProfile() {
   if (!contentEl || !profile || !profile.student) return;
 
   const s = profile.student;
-  const regStatus = s.registration_complete ? 'Complete' : 'Incomplete';
-  const regColor = s.registration_complete ? '#28a745' : '#dc3545';
+  const regBadge = s.registration_complete
+    ? '<span class="status-badge--complete">✓ Complete</span>'
+    : '<span class="status-badge--pending">⏳ Incomplete</span>';
 
   let html = '';
 
-  // Photo + Header section
-  html += '<div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:1.5rem">';
+  // Header card with photo
+  html += '<div class="card" style="margin-bottom:var(--space-lg)">';
+  html += '<div style="display:flex;gap:var(--space-lg);align-items:flex-start;flex-wrap:wrap">';
   if (photoUrl) {
-    html += `<img src="${escapeHtml(photoUrl)}" alt="Student photo" style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid #dee2e6" />`;
+    html += `<img src="${escapeHtml(photoUrl)}" alt="Student photo" style="width:120px;height:120px;object-fit:cover;border-radius:var(--radius-md);border:2px solid var(--color-border-light)" />`;
   } else {
-    html += '<div style="width:120px;height:120px;background:#e9ecef;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#6c757d;font-size:0.75rem">No photo</div>';
+    html += `<div class="avatar avatar--lg" style="width:120px;height:120px;font-size:2rem">${(s.first_name || '?')[0]}${(s.last_name || '?')[0]}</div>`;
   }
-  html += '<div>';
-  html += `<h2 style="margin:0 0 0.25rem 0">${escapeHtml(s.first_name || '')} ${escapeHtml(s.last_name || '')}</h2>`;
-  html += `<p style="margin:0 0 0.25rem 0"><strong>Grade:</strong> ${escapeHtml(s.grade || '—')}</p>`;
-  html += `<p style="margin:0 0 0.25rem 0"><strong>Registration:</strong> <span style="color:${regColor}">${regStatus}</span></p>`;
-  html += `<p style="margin:0"><strong>Callback Invited:</strong> ${profile.callbackInvited ? '<span style="color:#28a745">Yes</span>' : 'No'}</p>`;
+  html += '<div style="flex:1">';
+  html += `<h2 style="margin:0 0 var(--space-xs)">${escapeHtml(s.first_name || '')} ${escapeHtml(s.last_name || '')}</h2>`;
+  html += `<p style="margin:0 0 var(--space-xs);font-size:var(--text-small)">Grade ${escapeHtml(s.grade || '—')}</p>`;
+  if (s.student_email) {
+    html += `<p style="margin:0 0 var(--space-xs);font-size:var(--text-small)"><strong>Student Email:</strong> ${escapeHtml(s.student_email)}</p>`;
+  }
+  html += `<div style="display:flex;flex-wrap:wrap;gap:var(--space-xs);margin-bottom:var(--space-xs)">${regBadge}`;
+  html += profile.callbackInvited ? ' <span class="status-badge--complete">⭐ Callback Invited</span>' : '';
+  html += '</div>';
   html += '</div></div>';
 
-  // Parent info
-  html += '<h3>Parent / Guardian</h3>';
-  html += `<p>${escapeHtml(s.parent_first_name || '')} ${escapeHtml(s.parent_last_name || '')}</p>`;
-  html += `<p><strong>Email:</strong> ${escapeHtml(s.parent_email || '—')}</p>`;
-  html += `<p><strong>Phone:</strong> ${escapeHtml(s.parent_phone || '—')}</p>`;
+  // Parent info section
+  html += `<div style="margin-top:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--color-border-light)">`;
+  html += '<h3 style="font-size:var(--text-small);font-family:var(--font-body);text-transform:uppercase;letter-spacing:0.05em;color:var(--color-text-muted);margin-bottom:var(--space-sm)">Parent / Guardian</h3>';
+  html += `<p style="font-size:var(--text-small)">${escapeHtml(s.parent_first_name || '')} ${escapeHtml(s.parent_last_name || '')}</p>`;
+  html += `<p style="font-size:var(--text-small)"><strong>Email:</strong> ${escapeHtml(s.parent_email || '—')}</p>`;
+  html += `<p style="font-size:var(--text-small)"><strong>Phone:</strong> ${escapeHtml(s.parent_phone || '—')}</p>`;
+  html += '</div>';
 
-  // Participation
-  html += '<h3 style="margin-top:1.5rem">Participation</h3>';
+  // Parent 2 section (only if any parent2 fields populated)
+  if (s.parent2_first_name || s.parent2_last_name || s.parent2_email || s.parent2_phone) {
+    html += `<div style="margin-top:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--color-border-light)">`;
+    html += '<h3 style="font-size:var(--text-small);font-family:var(--font-body);text-transform:uppercase;letter-spacing:0.05em;color:var(--color-text-muted);margin-bottom:var(--space-sm)">Parent / Guardian 2</h3>';
+    html += `<p style="font-size:var(--text-small)">${escapeHtml(s.parent2_first_name || '')} ${escapeHtml(s.parent2_last_name || '')}</p>`;
+    html += `<p style="font-size:var(--text-small)"><strong>Email:</strong> ${escapeHtml(s.parent2_email || '—')}</p>`;
+    html += `<p style="font-size:var(--text-small)"><strong>Phone:</strong> ${escapeHtml(s.parent2_phone || '—')}</p>`;
+    html += '</div>';
+  }
+
+  // Song info
+  if (s.sings_own_disney_song) {
+    html += `<div style="margin-top:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--color-border-light)">`;
+    html += `<span class="status-badge--complete">Own Disney Song: ${escapeHtml(s.song_name || '—')}</span>`;
+    html += '</div>';
+  }
+
+  html += '</div>';
+
+  // Participation card
+  html += '<div class="card" style="margin-bottom:var(--space-lg)">';
+  html += '<h3 style="margin-bottom:var(--space-md)">Participation</h3>';
   html += renderParticipation();
+  html += '</div>';
 
-  // Evaluations
-  html += '<h3 style="margin-top:1.5rem">Evaluation Notes</h3>';
+  // Evaluations card
+  html += '<div class="card">';
+  html += '<h3 style="margin-bottom:var(--space-md)">Evaluation Notes</h3>';
   html += renderEvaluations();
   html += renderEvaluationForm();
+  html += '</div>';
 
   contentEl.innerHTML = html;
   bindProfileEvents(contentEl);
@@ -123,24 +157,23 @@ function renderProfile() {
 function renderParticipation() {
   let html = '<table class="data-table"><thead><tr><th>Track</th><th>Status</th><th>Details</th></tr></thead><tbody>';
 
-  // Dance
-  if (profile.dance && profile.dance.dance_sessions) {
-    const ds = profile.dance.dance_sessions;
-    html += `<tr><td>Dance</td><td style="color:#28a745">Signed Up</td><td>${formatDate(ds.audition_date)} ${formatTime(ds.start_time)} – ${formatTime(ds.end_time)}${ds.label ? ' (' + escapeHtml(ds.label) + ')' : ''}</td></tr>`;
+  if (profile.dance?.dance_windows?.length) {
+    const windowsText = profile.dance.dance_windows
+      .map((window) => `${formatDate(window.audition_date)} ${formatTime(window.start_time)} – ${formatTime(window.end_time)}`)
+      .join('; ');
+    html += `<tr><td>🎵 Dance</td><td style="color:var(--color-success)">Assigned</td><td>${escapeHtml(windowsText)}</td></tr>`;
   } else {
-    html += '<tr><td>Dance</td><td style="color:#6c757d">Not signed up</td><td>—</td></tr>';
+    html += '<tr><td>🎵 Dance</td><td style="color:var(--color-text-muted)">Not configured</td><td>—</td></tr>';
   }
 
-  // Vocal
   if (profile.vocal && profile.vocal.audition_slots) {
     const vs = profile.vocal.audition_slots;
-    html += `<tr><td>Vocal</td><td style="color:#28a745">Booked</td><td>${formatDate(vs.audition_date)} ${formatTime(vs.start_time)} – ${formatTime(vs.end_time)}</td></tr>`;
+    html += `<tr><td>🎤 Vocal</td><td style="color:var(--color-success)">Booked</td><td>${formatDate(vs.audition_date)} ${formatTime(vs.start_time)} – ${formatTime(vs.end_time)}</td></tr>`;
   } else {
-    html += '<tr><td>Vocal</td><td style="color:#6c757d">Not booked</td><td>—</td></tr>';
+    html += '<tr><td>🎤 Vocal</td><td style="color:var(--color-text-muted)">Not booked</td><td>—</td></tr>';
   }
 
-  // Callbacks
-  html += `<tr><td>Callbacks</td><td>${profile.callbackInvited ? '<span style="color:#28a745">Invited</span>' : '<span style="color:#6c757d">Not invited</span>'}</td><td>—</td></tr>`;
+  html += `<tr><td>⭐ Callbacks</td><td>${profile.callbackInvited ? '<span style="color:var(--color-success)">Invited</span>' : '<span style="color:var(--color-text-muted)">Not invited</span>'}</td><td>—</td></tr>`;
 
   html += '</tbody></table>';
   return html;
@@ -148,7 +181,7 @@ function renderParticipation() {
 
 function renderEvaluations() {
   if (profile.evaluations.length === 0) {
-    return '<p style="font-size:0.875rem;color:#6c757d">No evaluation notes yet.</p>';
+    return '<p style="font-size:var(--text-small);color:var(--color-text-muted);margin-bottom:var(--space-md)">No evaluation notes yet.</p>';
   }
 
   const { user } = getAuthState();
@@ -164,7 +197,7 @@ function renderEvaluations() {
       <td>${escapeHtml(ev.track)}</td>
       <td>${escapeHtml(ev.notes)}</td>
       <td>${escapeHtml(staffName)}</td>
-      <td>${escapeHtml(date)}</td>
+      <td style="font-size:var(--text-xs)">${escapeHtml(date)}</td>
       <td>${isOwn ? `<button class="btn-small edit-eval-btn" data-id="${ev.id}" data-notes="${escapeHtml(ev.notes)}" data-track="${escapeHtml(ev.track)}">Edit</button>` : ''}</td>
     </tr>`;
   });
@@ -178,26 +211,29 @@ function renderEvaluationForm() {
   const editingEval = isEditing ? profile.evaluations.find((e) => e.id === editingEvalId) : null;
 
   return `
-    <div style="margin-top:1rem;max-width:500px">
+    <div style="margin-top:var(--space-lg);max-width:500px">
       <h4>${isEditing ? 'Edit Note' : 'Add Note'}</h4>
-      <label for="eval-track">Track</label>
-      <select id="eval-track" style="padding:0.5rem;border:1px solid #ced4da;border-radius:4px;width:100%;margin-bottom:0.5rem" ${isEditing ? 'disabled' : ''}>
-        <option value="general" ${(!editingEval || editingEval.track === 'general') ? 'selected' : ''}>General</option>
-        <option value="dance" ${editingEval?.track === 'dance' ? 'selected' : ''}>Dance</option>
-        <option value="vocal" ${editingEval?.track === 'vocal' ? 'selected' : ''}>Vocal</option>
-        <option value="callbacks" ${editingEval?.track === 'callbacks' ? 'selected' : ''}>Callbacks</option>
-      </select>
-      <label for="eval-notes">Notes</label>
-      <textarea id="eval-notes" rows="3" style="padding:0.5rem;border:1px solid #ced4da;border-radius:4px;width:100%;margin-bottom:0.5rem;font-family:inherit">${editingEval ? escapeHtml(editingEval.notes) : ''}</textarea>
-      <button id="eval-submit-btn">${isEditing ? 'Update Note' : 'Add Note'}</button>
-      ${isEditing ? '<button id="eval-cancel-btn" class="btn-small btn-secondary" style="margin-left:0.5rem">Cancel</button>' : ''}
-      <div class="form-message" id="eval-msg" aria-live="polite"></div>
+      <div class="login-form" style="max-width:100%">
+        <label for="eval-track">Track</label>
+        <select id="eval-track" ${isEditing ? 'disabled' : ''}>
+          <option value="general" ${(!editingEval || editingEval.track === 'general') ? 'selected' : ''}>General</option>
+          <option value="dance" ${editingEval?.track === 'dance' ? 'selected' : ''}>Dance</option>
+          <option value="vocal" ${editingEval?.track === 'vocal' ? 'selected' : ''}>Vocal</option>
+          <option value="callbacks" ${editingEval?.track === 'callbacks' ? 'selected' : ''}>Callbacks</option>
+        </select>
+        <label for="eval-notes">Notes</label>
+        <textarea id="eval-notes" rows="3">${editingEval ? escapeHtml(editingEval.notes) : ''}</textarea>
+        <div style="display:flex;gap:var(--space-sm)">
+          <button id="eval-submit-btn" class="btn-accent">${isEditing ? 'Update Note' : 'Add Note'}</button>
+          ${isEditing ? '<button id="eval-cancel-btn" class="btn-ghost">Cancel</button>' : ''}
+        </div>
+        <div class="form-message${evalFlash?.type ? ` ${evalFlash.type}` : ''}" id="eval-msg" aria-live="polite">${evalFlash?.text || ''}</div>
+      </div>
     </div>
   `;
 }
 
 function bindProfileEvents(contentEl) {
-  // Edit evaluation buttons
   contentEl.querySelectorAll('.edit-eval-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       editingEvalId = btn.dataset.id;
@@ -205,7 +241,6 @@ function bindProfileEvents(contentEl) {
     });
   });
 
-  // Cancel edit button
   const cancelBtn = document.getElementById('eval-cancel-btn');
   if (cancelBtn) {
     cancelBtn.addEventListener('click', () => {
@@ -214,7 +249,6 @@ function bindProfileEvents(contentEl) {
     });
   }
 
-  // Submit evaluation
   const submitBtn = document.getElementById('eval-submit-btn');
   if (submitBtn) {
     submitBtn.addEventListener('click', async () => {
@@ -233,6 +267,7 @@ function bindProfileEvents(contentEl) {
 
       submitBtn.disabled = true;
       submitBtn.textContent = editingEvalId ? 'Updating…' : 'Adding…';
+      evalFlash = null;
       if (msgEl) { msgEl.className = 'form-message'; msgEl.textContent = ''; }
 
       let error;
@@ -250,14 +285,13 @@ function bindProfileEvents(contentEl) {
         return;
       }
 
-      if (msgEl) {
-        msgEl.className = 'form-message success';
-        msgEl.textContent = editingEvalId ? 'Note updated.' : 'Note added.';
-      }
+      evalFlash = {
+        type: 'success',
+        text: editingEvalId ? 'Note updated.' : 'Note added.',
+      };
 
       editingEvalId = null;
 
-      // Reload evaluations
       const { data: newEvals } = await fetchEvaluationsForStudent(profile.student.id);
       profile.evaluations = newEvals || [];
       renderProfile();

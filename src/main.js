@@ -1,4 +1,4 @@
-import { addRoute, setNotFound, setGuard, startRouter, navigate } from './router.js';
+import { addRoute, setNotFound, setGuard, startRouter, navigate, currentPath } from './router.js';
 import { initAuth, getAuthState, subscribe } from './auth.js';
 import { canAccessRoute, isStaff, isAdmin } from './domain/roles.js';
 import { signOut } from './adapters/auth.js';
@@ -9,6 +9,7 @@ import { renderFamilyDashboard } from './pages/familyDashboard.js';
 import { renderStaffDashboard } from './pages/staffDashboard.js';
 import { renderAdminDashboard } from './pages/adminDashboard.js';
 import { renderAdminContracts } from './pages/adminContracts.js';
+import { renderAdminRegistrations } from './pages/adminRegistrations.js';
 import { renderFamilyContract } from './pages/familyContract.js';
 import { renderFamilyRegistration } from './pages/familyRegistration.js';
 import { renderStaffScheduling } from './pages/staffScheduling.js';
@@ -19,26 +20,70 @@ import { renderFamilyVocalBooking } from './pages/familyVocalBooking.js';
 import { renderStaffVocalRoster } from './pages/staffVocalRoster.js';
 import { renderStaffCallbacks } from './pages/staffCallbacks.js';
 import { renderStaffStudentProfile } from './pages/staffStudentProfile.js';
+import { renderStaffRoleConfig } from './pages/staffRoleConfig.js';
+import { renderStaffVocalAssignments } from './pages/staffVocalAssignments.js';
+import { buildFamilyLayout, buildStaffLayout, buildPublicLayout } from './ui/layouts.js';
 
-function renderNav() {
+let currentLayoutType = null;
+let layoutRef = null;
+
+function getLayoutType(path) {
   const { session, role } = getAuthState();
-  const links = ['<a href="#/" data-route="/">Home</a>'];
+  if (!session) return 'public';
+  if (path.startsWith('/staff') || path.startsWith('/admin')) {
+    return isStaff(role) ? 'staff' : 'public';
+  }
+  if (path.startsWith('/family')) return 'family';
+  return 'public';
+}
 
-  if (!session) {
-    links.push('<a href="#/family/login" data-route="/family/login">Family Login</a>');
-    links.push('<a href="#/staff/login" data-route="/staff/login">Staff Login</a>');
-  } else {
-    links.push('<a href="#/family" data-route="/family">Family</a>');
-    if (isStaff(role)) {
-      links.push('<a href="#/staff" data-route="/staff">Staff</a>');
+function buildLayout(type) {
+  const { session, role, staffProfile } = getAuthState();
+  switch (type) {
+    case 'family':
+      return buildFamilyLayout(session?.user?.email || '');
+    case 'staff': {
+      const displayName = staffProfile?.display_name || session?.user?.email || '';
+      return buildStaffLayout(displayName, role, isAdmin(role));
     }
-    if (isAdmin(role)) {
-      links.push('<a href="#/admin" data-route="/admin">Admin</a>');
-    }
-    links.push('<a href="#" id="logout-link">Sign Out</a>');
+    default:
+      return buildPublicLayout();
+  }
+}
+
+function bindLogout() {
+  const btn = document.getElementById('layout-logout-btn');
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      try {
+        await signOut();
+      } finally {
+        navigate('/');
+      }
+    });
+  }
+}
+
+function updateLayout() {
+  const path = currentPath();
+  const type = getLayoutType(path);
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  if (type !== currentLayoutType) {
+    currentLayoutType = type;
+    layoutRef = buildLayout(type);
+    app.innerHTML = '';
+    app.appendChild(layoutRef.element);
+    bindLogout();
   }
 
-  return `<nav>${links.join('')}</nav>`;
+  // Update active indicators
+  if (type === 'family' && layoutRef.updateActiveTab) {
+    layoutRef.updateActiveTab(path);
+  } else if (type === 'staff' && layoutRef.updateActiveLink) {
+    layoutRef.updateActiveLink(path);
+  }
 }
 
 function renderNotFound() {
@@ -51,29 +96,12 @@ function renderNotFound() {
   `;
 }
 
-function updateNav() {
-  const navEl = document.getElementById('main-nav');
-  if (navEl) navEl.innerHTML = renderNav();
-
-  // Bind logout
-  const logoutLink = document.getElementById('logout-link');
-  if (logoutLink) {
-    logoutLink.addEventListener('click', async (e) => {
-      e.preventDefault();
-      await signOut();
-      navigate('/');
-    });
-  }
-}
-
 async function init() {
   const app = document.getElementById('app');
   if (!app) return;
 
-  app.innerHTML = `
-    <div id="main-nav">${renderNav()}</div>
-    <main id="route-content"></main>
-  `;
+  // Bootstrap with a minimal shell so router has a target
+  app.innerHTML = `<main id="route-content"></main>`;
 
   // Register routes
   addRoute('/', renderHome);
@@ -83,6 +111,7 @@ async function init() {
   addRoute('/staff', renderStaffDashboard);
   addRoute('/admin', renderAdminDashboard);
   addRoute('/admin/contracts', renderAdminContracts);
+  addRoute('/admin/registrations', renderAdminRegistrations);
   addRoute('/family/contract', renderFamilyContract);
   addRoute('/family/register', renderFamilyRegistration);
   addRoute('/family/schedule', renderFamilySchedule);
@@ -93,11 +122,12 @@ async function init() {
   addRoute('/staff/vocal-roster', renderStaffVocalRoster);
   addRoute('/staff/callbacks', renderStaffCallbacks);
   addRoute('/staff/student-profile', renderStaffStudentProfile);
+  addRoute('/staff/roles', renderStaffRoleConfig);
+  addRoute('/staff/vocal-assignments', renderStaffVocalAssignments);
   setNotFound(renderNotFound);
 
   // Initialize auth BEFORE starting router so guard has session/role
   await initAuth();
-  updateNav();
 
   // Set auth guard
   setGuard((path) => {
@@ -105,11 +135,32 @@ async function init() {
     return canAccessRoute(path, session, role);
   });
 
+  // Build layout before router renders first page
+  const path = (window.location.hash || '#/').slice(1).split('?')[0] || '/';
+  const type = getLayoutType(path);
+  currentLayoutType = type;
+  layoutRef = buildLayout(type);
+  app.innerHTML = '';
+  app.appendChild(layoutRef.element);
+  bindLogout();
+
   const { rerender } = startRouter('#route-content');
 
-  // Re-render nav and route on auth state change
+  // Listen for hash changes to update layout
+  window.addEventListener('hashchange', () => {
+    updateLayout();
+  });
+
+  // Re-render layout and route on auth state change (skip if nothing changed)
+  let lastUserId = getAuthState().user?.id ?? null;
+  let lastRole = getAuthState().role;
   subscribe(() => {
-    updateNav();
+    const { user, role } = getAuthState();
+    const userId = user?.id ?? null;
+    if (userId === lastUserId && role === lastRole) return;
+    lastUserId = userId;
+    lastRole = role;
+    updateLayout();
     rerender();
   });
 

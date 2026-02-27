@@ -1,32 +1,24 @@
-import { getAuthState } from '../auth.js';
-import { isAdmin } from '../domain/roles.js';
 import { formatTime, formatDate } from '../domain/scheduling.js';
 import { escapeHtml } from '../ui/escapeHtml.js';
 import {
-  fetchAllDanceSessions,
-  fetchDanceRoster,
-  fetchSignupCountsBySession,
-  generateDanceSessionsFromConfig,
-  deleteDanceSession,
-  adminUpdateDanceSignup,
+  fetchDanceWindowsFromConfig,
+  fetchAssignedDanceRoster,
 } from '../adapters/danceSessions.js';
 import { exportDanceSessionPdf, exportDanceRosterCsv } from '../exports/index.js';
 import { createSubmitGuard } from '../ui/rateLimiting.js';
 
 const guardedExportPdf = createSubmitGuard(exportDanceSessionPdf);
 const guardedExportCsv = createSubmitGuard(exportDanceRosterCsv);
-let sessions = [];
+let danceWindows = [];
 let roster = [];
-let counts = {};
 let dateFilter = '';
 
 export function renderStaffDanceRoster() {
   const container = document.createElement('div');
   container.className = 'page';
   container.innerHTML = `
-    <h1>Dance Roster</h1>
-    <p><a href="#/staff">&larr; Back to Staff Dashboard</a></p>
-    <div id="dance-roster-actions" style="margin-bottom:1rem"></div>
+    <h1>Dance Roster 🎵</h1>
+    <div id="dance-roster-actions" style="margin-bottom:var(--space-md)"></div>
     <div class="form-message" id="roster-msg" aria-live="polite"></div>
     <div id="dance-roster-content"><p>Loading…</p></div>
   `;
@@ -36,15 +28,13 @@ export function renderStaffDanceRoster() {
 }
 
 async function loadAndRender() {
-  const [sessionsResult, rosterResult, countsResult] = await Promise.all([
-    fetchAllDanceSessions(),
-    fetchDanceRoster(),
-    fetchSignupCountsBySession(),
+  const [windowsResult, rosterResult] = await Promise.all([
+    fetchDanceWindowsFromConfig(),
+    fetchAssignedDanceRoster(),
   ]);
 
-  sessions = sessionsResult.data || [];
+  danceWindows = windowsResult.data || [];
   roster = rosterResult.data || [];
-  counts = countsResult.data || {};
 
   renderActions();
   renderContent();
@@ -53,47 +43,20 @@ async function loadAndRender() {
 function renderActions() {
   const actionsEl = document.getElementById('dance-roster-actions');
   if (!actionsEl) return;
-  const { role } = getAuthState();
 
   actionsEl.innerHTML = `
-    <button class="btn-small" id="generate-sessions-btn">Generate Sessions from Config</button>
-    <button class="btn-small" id="export-dance-pdf-btn">Export PDF</button>
-    <button class="btn-small btn-secondary" id="export-dance-csv-btn">Export CSV</button>
-    ${isAdmin(role) ? '<span style="margin-left:0.5rem;font-size:0.75rem;color:#6c757d">(Admin: you can delete sessions and override sign-ups below)</span>' : ''}
+    <div style="display:flex;flex-wrap:wrap;gap:var(--space-sm);align-items:center">
+      <button class="btn-small" id="export-dance-pdf-btn">📄 PDF</button>
+      <button class="btn-small btn-secondary" id="export-dance-csv-btn">📊 CSV</button>
+      <span style="font-size:var(--text-xs);color:var(--color-text-muted)">Dance roster is auto-assigned from scheduling config.</span>
+    </div>
   `;
-
-  document.getElementById('generate-sessions-btn')?.addEventListener('click', async (e) => {
-    const btn = e.target;
-    const msgEl = document.getElementById('roster-msg');
-    btn.disabled = true;
-    btn.textContent = 'Generating…';
-    if (msgEl) { msgEl.className = 'form-message'; msgEl.textContent = ''; }
-
-    const { user } = getAuthState();
-    const { data, error } = await generateDanceSessionsFromConfig(user.id);
-
-    if (error) {
-      btn.disabled = false;
-      btn.textContent = 'Generate Sessions from Config';
-      if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = error.message || 'Failed to generate sessions.'; }
-      return;
-    }
-
-    const count = data?.length || 0;
-    if (msgEl) {
-      msgEl.className = 'form-message success';
-      msgEl.textContent = count > 0 ? `Generated ${count} session(s).` : 'No new sessions to generate (all dates already have sessions).';
-    }
-    btn.disabled = false;
-    btn.textContent = 'Generate Sessions from Config';
-    await loadAndRender();
-  });
 
   document.getElementById('export-dance-pdf-btn')?.addEventListener('click', async (e) => {
     const btn = e.target;
     const msgEl = document.getElementById('roster-msg');
     btn.disabled = true;
-    btn.textContent = 'Generating PDF…';
+    btn.textContent = 'Generating…';
     if (msgEl) { msgEl.className = 'form-message'; msgEl.textContent = ''; }
     try {
       await guardedExportPdf();
@@ -102,7 +65,7 @@ function renderActions() {
       if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
     }
     btn.disabled = false;
-    btn.textContent = 'Export PDF';
+    btn.textContent = '📄 PDF';
   });
 
   document.getElementById('export-dance-csv-btn')?.addEventListener('click', async (e) => {
@@ -117,32 +80,31 @@ function renderActions() {
       if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
     }
     btn.disabled = false;
-    btn.textContent = 'Export CSV';
+    btn.textContent = '📊 CSV';
   });
 }
 
 function renderContent() {
   const contentEl = document.getElementById('dance-roster-content');
   if (!contentEl) return;
-  const { role } = getAuthState();
-  const admin = isAdmin(role);
 
-  if (sessions.length === 0) {
-    contentEl.innerHTML = '<div class="placeholder-notice">No dance sessions exist yet. Click "Generate Sessions from Config" to create them.</div>';
+  if (danceWindows.length === 0) {
+    contentEl.innerHTML = '<div class="placeholder-notice">No dance windows configured yet. Set dance times in Scheduling.</div>';
     return;
   }
 
-  // Date filter
-  const dates = [...new Set(sessions.map((s) => s.audition_date))].sort();
-  let html = '<div style="margin-bottom:1rem"><label for="dance-date-filter" style="margin-right:0.5rem"><strong>Filter by date:</strong></label>';
-  html += '<select id="dance-date-filter" style="padding:0.4rem;border:1px solid #ced4da;border-radius:4px">';
+  const dates = [...new Set(danceWindows.map((window) => window.audition_date))].sort();
+  let html = `<div style="margin-bottom:var(--space-md)"><label for="dance-date-filter" style="margin-right:var(--space-sm);font-weight:600;font-size:var(--text-small)">Filter by date:</label>`;
+  html += `<select id="dance-date-filter" style="padding:0.5rem 0.75rem;border:1px solid var(--color-border);border-radius:var(--radius-sm);font-family:var(--font-body);font-size:var(--text-small)">`;
   html += '<option value="">All dates</option>';
-  dates.forEach((d) => {
-    html += `<option value="${d}" ${dateFilter === d ? 'selected' : ''}>${formatDate(d)}</option>`;
+  dates.forEach((date) => {
+    html += `<option value="${date}" ${dateFilter === date ? 'selected' : ''}>${formatDate(date)}</option>`;
   });
   html += '</select></div>';
 
-  const filteredSessions = dateFilter ? sessions.filter((s) => s.audition_date === dateFilter) : sessions;
+  const filteredWindows = dateFilter
+    ? danceWindows.filter((window) => window.audition_date === dateFilter)
+    : danceWindows;
 
   html += `
     <div class="table-responsive">
@@ -150,150 +112,54 @@ function renderContent() {
       <thead>
         <tr>
           <th>Date</th>
-          <th>Time</th>
-          <th>Label</th>
-          <th>Capacity</th>
-          <th>Signed Up</th>
-          ${admin ? '<th>Actions</th>' : ''}
+          <th>Dance Window</th>
+          <th>Assigned Students</th>
         </tr>
       </thead>
       <tbody>
   `;
 
-  filteredSessions.forEach((s) => {
-    const count = counts[s.id] || 0;
-    const capText = s.capacity !== null ? `${count} / ${s.capacity}` : `${count}`;
+  filteredWindows.forEach((window) => {
+    const assigned = roster.filter((entry) => entry.dance_window_id === window.id);
     html += `
       <tr>
-        <td>${formatDate(s.audition_date)}</td>
-        <td>${formatTime(s.start_time)} – ${formatTime(s.end_time)}</td>
-        <td>${escapeHtml(s.label || '—')}</td>
-        <td>${s.capacity !== null ? s.capacity : 'Unlimited'}</td>
-        <td>${capText}</td>
-        ${admin ? `<td><button class="btn-small btn-secondary delete-session-btn" data-id="${s.id}">Delete</button></td>` : ''}
+        <td>${formatDate(window.audition_date)}</td>
+        <td>${formatTime(window.start_time)} – ${formatTime(window.end_time)}</td>
+        <td>${assigned.length}</td>
       </tr>
     `;
   });
 
   html += '</tbody></table></div>';
+  html += '<h2 style="margin-top:var(--space-xl)">Attendees by Dance Window</h2>';
 
-  // Roster grouped by session
-  html += '<h2 style="margin-top:1.5rem">Attendees by Session</h2>';
-
-  filteredSessions.forEach((s) => {
-    const attendees = roster.filter((r) => r.dance_session_id === s.id);
-    html += `
-      <h3 style="margin-top:1rem">${formatDate(s.audition_date)} — ${s.label ? escapeHtml(s.label) : formatTime(s.start_time) + ' – ' + formatTime(s.end_time)}</h3>
-    `;
+  filteredWindows.forEach((window) => {
+    const attendees = roster.filter((entry) => entry.dance_window_id === window.id);
+    html += `<h3 style="margin-top:var(--space-md)">${formatDate(window.audition_date)} — ${formatTime(window.start_time)} – ${formatTime(window.end_time)}</h3>`;
 
     if (attendees.length === 0) {
-      html += '<p style="font-size:0.875rem;color:#6c757d;margin-bottom:0.5rem">No sign-ups yet.</p>';
+      html += '<p style="font-size:var(--text-small);color:var(--color-text-muted);margin-bottom:var(--space-sm)">No assigned students yet.</p>';
     } else {
       html += '<table class="data-table"><thead><tr><th>#</th><th>Student</th><th>Grade</th></tr></thead><tbody>';
-      attendees.forEach((a, i) => {
-        const st = a.students;
+      attendees.forEach((entry, idx) => {
+        const st = entry.students;
         const profileLink = `#/staff/student-profile?id=${st?.id || ''}`;
-        html += `<tr><td>${i + 1}</td><td><a href="${profileLink}">${escapeHtml(st?.first_name || '')} ${escapeHtml(st?.last_name || '')}</a></td><td>${escapeHtml(st?.grade || '—')}</td></tr>`;
+        html += `<tr><td>${idx + 1}</td><td><a href="${profileLink}">${escapeHtml(st?.first_name || '')} ${escapeHtml(st?.last_name || '')}</a></td><td>${escapeHtml(st?.grade || '—')}</td></tr>`;
       });
       html += '</tbody></table>';
     }
   });
 
-  // Admin override section
-  if (admin) {
-    html += renderAdminOverride();
-  }
-
   contentEl.innerHTML = html;
   bindContentEvents(contentEl);
 }
 
-function renderAdminOverride() {
-  const sessionOptions = sessions
-    .map((s) => `<option value="${s.id}">${formatDate(s.audition_date)} — ${s.label ? escapeHtml(s.label) : formatTime(s.start_time) + '–' + formatTime(s.end_time)}</option>`)
-    .join('');
-
-  return `
-    <hr>
-    <h2>Admin Override</h2>
-    <p style="font-size:0.875rem;color:#6c757d;margin-bottom:0.75rem">Assign or change a student's dance session (bypasses lock time).</p>
-    <div class="login-form" style="max-width:500px">
-      <label for="override-student-id">Student ID</label>
-      <input type="text" id="override-student-id" placeholder="Paste student UUID" />
-      <label for="override-session">Dance Session</label>
-      <select id="override-session" style="padding:0.5rem;border:1px solid #ced4da;border-radius:4px">
-        <option value="">Select a session…</option>
-        ${sessionOptions}
-      </select>
-      <button id="override-btn">Assign Session</button>
-      <div class="form-message" id="override-msg" aria-live="polite"></div>
-    </div>
-  `;
-}
-
 function bindContentEvents(contentEl) {
-  // Date filter
   const filterEl = document.getElementById('dance-date-filter');
   if (filterEl) {
     filterEl.addEventListener('change', () => {
       dateFilter = filterEl.value;
       renderContent();
-    });
-  }
-
-  // Delete session buttons
-  contentEl.querySelectorAll('.delete-session-btn').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      if (!window.confirm('Delete this dance session? Any existing sign-ups will be removed.')) return;
-      const sessionId = btn.dataset.id;
-      btn.disabled = true;
-      btn.textContent = 'Deleting…';
-
-      const { error } = await deleteDanceSession(sessionId);
-      const msgEl = document.getElementById('roster-msg');
-
-      if (error) {
-        btn.disabled = false;
-        btn.textContent = 'Delete';
-        if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = error.message || 'Failed to delete session.'; }
-        return;
-      }
-
-      if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'Session deleted.'; }
-      await loadAndRender();
-    });
-  });
-
-  // Admin override button
-  const overrideBtn = document.getElementById('override-btn');
-  if (overrideBtn) {
-    overrideBtn.addEventListener('click', async () => {
-      const studentId = document.getElementById('override-student-id')?.value?.trim();
-      const sessionId = document.getElementById('override-session')?.value;
-      const msgEl = document.getElementById('override-msg');
-
-      if (!studentId || !sessionId) {
-        if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = 'Both student ID and session are required.'; }
-        return;
-      }
-
-      overrideBtn.disabled = true;
-      overrideBtn.textContent = 'Assigning…';
-      if (msgEl) { msgEl.className = 'form-message'; msgEl.textContent = ''; }
-
-      const { error } = await adminUpdateDanceSignup(studentId, sessionId);
-
-      if (error) {
-        overrideBtn.disabled = false;
-        overrideBtn.textContent = 'Assign Session';
-        if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = error.message || 'Override failed.'; }
-        return;
-      }
-
-      if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'Student assigned to session.'; }
-      overrideBtn.disabled = false;
-      overrideBtn.textContent = 'Assign Session';
-      await loadAndRender();
     });
   }
 }

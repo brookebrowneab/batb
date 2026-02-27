@@ -151,21 +151,27 @@ export function renderAdminContracts() {
   const container = document.createElement('div');
   container.className = 'page';
   container.innerHTML = `
-    <h1>Contract Management</h1>
-    <p><a href="#/admin">&larr; Back to Admin Dashboard</a></p>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-md)">
+      <h1 style="margin:0">Contract Management 📋</h1>
+      <button class="btn-ghost" onclick="location.hash='#/admin'" style="min-height:auto;width:auto">← Dashboard</button>
+    </div>
 
-    <h2>Contract Versions</h2>
-    <div id="contract-list"><p>Loading…</p></div>
+    <div class="card" style="margin-bottom:var(--space-lg)">
+      <h2 style="margin-bottom:var(--space-md)">Contract Versions</h2>
+      <div id="contract-list"><p>Loading…</p></div>
+    </div>
 
-    <div id="contract-preview" class="contract-preview-box"></div>
+    <div id="contract-preview" class="contract-preview-box card" style="margin-bottom:var(--space-lg)"></div>
 
-    <h2>Create New Version</h2>
-    <form id="create-contract-form" class="login-form" style="max-width:none">
-      <label>Contract Text</label>
-      <div id="quill-editor"></div>
-      <button type="submit">Create Contract Version</button>
-      <div id="create-contract-message" class="form-message" aria-live="polite"></div>
-    </form>
+    <div class="card">
+      <h2 style="margin-bottom:var(--space-md)">Create New Version</h2>
+      <form id="create-contract-form" class="login-form" style="max-width:none">
+        <label>Contract Text</label>
+        <div id="quill-editor"></div>
+        <button type="submit" class="btn-accent">Create Contract Version</button>
+        <div id="create-contract-message" class="form-message" aria-live="polite"></div>
+      </form>
+    </div>
   `;
 
   setTimeout(async () => {

@@ -8,7 +8,7 @@ import {
   canExport, buildCsvString, groupDanceRosterBySessions, groupVocalRosterBySlots,
   danceRosterToCsvData, vocalRosterToCsvData, callbacksToCsvData,
 } from '../domain/exports.js';
-import { fetchDanceRoster, fetchAllDanceSessions } from '../adapters/danceSessions.js';
+import { fetchDanceRoster, fetchDanceWindowsFromConfig } from '../adapters/danceSessions.js';
 import { fetchVocalRoster, fetchAllVocalSlots } from '../adapters/vocalBookings.js';
 import { fetchAllStudentsForCallbacks } from '../adapters/callbacks.js';
 import { fetchStudentForStaff } from '../adapters/students.js';
@@ -93,7 +93,7 @@ export async function exportDanceSessionPdf() {
   assertStaff();
   const [{ data: roster }, { data: sessions }] = await Promise.all([
     fetchDanceRoster(),
-    fetchAllDanceSessions(),
+    fetchDanceWindowsFromConfig(),
   ]);
   const grouped = groupDanceRosterBySessions(roster || [], sessions || []);
   const studentIds = (roster || []).map((r) => r.students?.id).filter(Boolean);

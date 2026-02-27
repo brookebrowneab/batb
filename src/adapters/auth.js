@@ -6,13 +6,27 @@
  */
 import { supabase } from './supabase.js';
 
+function getAuthRedirectUrl() {
+  const configured = import.meta.env.VITE_AUTH_REDIRECT_URL;
+  if (configured) return configured;
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}/#/family`;
+  }
+  return undefined;
+}
+
 /**
  * Send a magic link to a family user's email.
  * @param {string} email
  * @returns {Promise<{error: Error|null}>}
  */
 export async function signInWithMagicLink(email) {
-  const { error } = await supabase.auth.signInWithOtp({ email });
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: getAuthRedirectUrl(),
+    },
+  });
   return { error };
 }
 
@@ -34,7 +48,13 @@ export async function signInWithPassword(email, password) {
  * @returns {Promise<{data: object|null, error: Error|null}>}
  */
 export async function signUpWithPassword(email, password) {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: getAuthRedirectUrl(),
+    },
+  });
   return { data, error };
 }
 

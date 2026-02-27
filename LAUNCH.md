@@ -64,6 +64,23 @@ Deploy the `dist/` folder to GitHub Pages:
 - Push to your deployment branch, OR
 - Use GitHub Actions for automated deployment
 
+## Step 6.5: Enable Real Staff Notification Emails (Resend)
+
+This app now sends callback/day-assignment notifications via Supabase Edge Function `send-notification-email`.
+
+1. Set Edge Function secrets:
+   ```bash
+   supabase secrets set RESEND_API_KEY=your_resend_api_key
+   supabase secrets set EMAIL_FROM="BATB Auditions <auditions@adcatheatre.com>"
+   supabase secrets set EMAIL_REPLY_TO="theatre@adcatheatre.com"
+   ```
+2. Deploy the function:
+   ```bash
+   supabase functions deploy send-notification-email --no-verify-jwt=false
+   ```
+3. Verify domain in Resend and publish DNS (SPF/DKIM) for `adcatheatre.com`.
+4. In staff pages, use **Send Notifications** and confirm records appear in `notification_sends`.
+
 ## Step 7: Pre-Launch Checklist
 
 - [ ] Admin can log in with email/password

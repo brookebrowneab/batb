@@ -11,6 +11,7 @@ import {
   logNotificationSend,
   fetchNotificationHistory,
 } from '../adapters/callbacks.js';
+import { sendNotificationEmail } from '../adapters/notifications.js';
 import { fetchAllConfigs } from '../adapters/scheduling.js';
 import { exportFullTrackPdf, exportCallbacksCsv } from '../exports/index.js';
 import { createSubmitGuard } from '../ui/rateLimiting.js';
@@ -21,14 +22,14 @@ const guardedExportCsv = createSubmitGuard(exportCallbacksCsv);
 let students = [];
 let configs = [];
 let history = [];
+let selectedIds = new Set();
 
 export function renderStaffCallbacks() {
   const container = document.createElement('div');
   container.className = 'page';
   container.innerHTML = `
-    <h1>Callback Management</h1>
-    <p><a href="#/staff">&larr; Back to Staff Dashboard</a></p>
-    <div id="callback-actions" style="margin-bottom:1rem"></div>
+    <h1>Callback Management ⭐</h1>
+    <div id="callback-actions" style="margin-bottom:var(--space-md)"></div>
     <div class="form-message" id="callback-msg" aria-live="polite"></div>
     <div id="callback-content"><p>Loading…</p></div>
   `;
@@ -60,11 +61,15 @@ function renderActions() {
   const totalCount = students.length;
 
   actionsEl.innerHTML = `
-    <p style="margin-bottom:0.5rem"><strong>${invitedCount}</strong> of <strong>${totalCount}</strong> students invited to callbacks.</p>
-    <button class="btn-small" id="send-all-btn">Send Callback Notifications</button>
-    <button class="btn-small" id="export-callbacks-pdf-btn">Export Full Pack PDF</button>
-    <button class="btn-small btn-secondary" id="export-callbacks-csv-btn">Export CSV</button>
-    <span style="margin-left:0.5rem;font-size:0.75rem;color:#6c757d">Sends to all invited students with a parent email on file (mock provider).</span>
+    <div style="display:flex;flex-wrap:wrap;gap:var(--space-sm);align-items:center;margin-bottom:var(--space-sm)">
+      <button class="btn-primary" id="send-all-btn">Send Notifications</button>
+      <button class="btn-small" id="export-callbacks-pdf-btn">📄 Full Pack PDF</button>
+      <button class="btn-small btn-secondary" id="export-callbacks-csv-btn">📊 CSV</button>
+    </div>
+    <p style="font-size:var(--text-small);color:var(--color-text-secondary)">
+      <strong>${invitedCount}</strong> of <strong>${totalCount}</strong> students invited to callbacks.
+      <span style="color:var(--color-text-muted)">(Real email delivery via Resend)</span>
+    </p>
   `;
 
   document.getElementById('send-all-btn')?.addEventListener('click', handleBatchSend);
@@ -73,7 +78,7 @@ function renderActions() {
     const btn = e.target;
     const msgEl = document.getElementById('callback-msg');
     btn.disabled = true;
-    btn.textContent = 'Generating PDF…';
+    btn.textContent = 'Generating…';
     if (msgEl) { msgEl.className = 'form-message'; msgEl.textContent = ''; }
     try {
       await guardedExportPdf();
@@ -82,7 +87,7 @@ function renderActions() {
       if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
     }
     btn.disabled = false;
-    btn.textContent = 'Export Full Pack PDF';
+    btn.textContent = '📄 Full Pack PDF';
   });
 
   document.getElementById('export-callbacks-csv-btn')?.addEventListener('click', async (e) => {
@@ -97,7 +102,7 @@ function renderActions() {
       if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
     }
     btn.disabled = false;
-    btn.textContent = 'Export CSV';
+    btn.textContent = '📊 CSV';
   });
 }
 
@@ -125,9 +130,12 @@ async function handleBatchSend() {
   const results = await Promise.allSettled(
     invitedWithEmail.map(async (student) => {
       const { subject, body, bodyPreview } = generateCallbackNotificationContent(student, configs);
-      // Mock email send — log to console
-      console.log(`[MOCK EMAIL] To: ${student.parent_email} | Subject: ${subject}\n${body}`);
-      // Audit log via RPC
+      const { error: sendError } = await sendNotificationEmail({
+        to: student.parent_email,
+        subject,
+        text: body,
+      });
+      if (sendError) throw sendError;
       const { error } = await logNotificationSend(student.id, student.parent_email, subject, bodyPreview);
       if (error) throw error;
       return student.id;
@@ -138,7 +146,7 @@ async function handleBatchSend() {
   const failed = results.filter((r) => r.status === 'rejected').length;
 
   btn.disabled = false;
-  btn.textContent = 'Send Callback Notifications';
+  btn.textContent = 'Send Notifications';
 
   if (msgEl) {
     if (failed === 0) {
@@ -150,7 +158,6 @@ async function handleBatchSend() {
     }
   }
 
-  // Reload history
   const { data: newHistory } = await fetchNotificationHistory();
   history = newHistory || [];
   renderContent();
@@ -166,6 +173,7 @@ function renderContent() {
   }
 
   let html = renderStudentTable();
+  html += renderBulkActionBar();
   html += renderCallbackWindows();
   html += renderNotificationHistory();
 
@@ -174,12 +182,14 @@ function renderContent() {
 }
 
 function renderStudentTable() {
+  const allSelected = students.length > 0 && selectedIds.size === students.length;
   let html = `
     <h2>Students</h2>
     <div class="table-responsive">
     <table class="data-table">
       <thead>
         <tr>
+          <th class="checkbox-cell"><input type="checkbox" id="select-all-cb" ${allSelected ? 'checked' : ''} /></th>
           <th>#</th>
           <th>Name</th>
           <th>Grade</th>
@@ -194,15 +204,17 @@ function renderStudentTable() {
   students.forEach((s, i) => {
     const invited = isCallbackInvited(s);
     const recipient = validateNotificationRecipient(s);
-    const regStatus = s.registration_complete ? 'Complete' : 'Incomplete';
-    const regClass = s.registration_complete ? 'color:#28a745' : 'color:#dc3545';
+    const regStatus = s.registration_complete ? '✓ Complete' : '⏳ Incomplete';
+    const regStyle = s.registration_complete ? 'color:var(--color-success)' : 'color:var(--color-error)';
+    const checked = selectedIds.has(s.id) ? 'checked' : '';
 
     html += `
       <tr>
+        <td class="checkbox-cell"><input type="checkbox" class="student-cb" data-id="${s.id}" ${checked} /></td>
         <td>${i + 1}</td>
         <td><a href="#/staff/student-profile?id=${s.id}">${escapeHtml(s.first_name || '')} ${escapeHtml(s.last_name || '')}</a></td>
         <td>${escapeHtml(s.grade || '—')}</td>
-        <td style="${regClass}">${regStatus}</td>
+        <td style="${regStyle};font-size:var(--text-small)">${regStatus}</td>
         <td>
           <button class="btn-small ${invited ? 'btn-secondary' : ''} invite-toggle-btn"
                   data-id="${s.id}" data-invited="${invited}">
@@ -225,14 +237,27 @@ function renderStudentTable() {
   return html;
 }
 
+function renderBulkActionBar() {
+  if (selectedIds.size === 0) return '';
+  return `
+    <div class="bulk-action-bar">
+      <span class="bulk-action-bar__count">${selectedIds.size} selected</span>
+      <div class="bulk-action-bar__actions">
+        <button class="btn-accent" id="bulk-invite-btn">Invite Selected (${selectedIds.size})</button>
+        <button class="btn-ghost" id="bulk-uninvite-btn" style="color:var(--color-surface);border-color:hsla(0,0%,100%,0.3)">Uninvite Selected</button>
+      </div>
+    </div>
+  `;
+}
+
 function renderCallbackWindows() {
   const windowConfigs = configs.filter((c) => c.callback_start_time && c.callback_end_time);
 
   if (windowConfigs.length === 0) {
-    return '<p style="margin-top:1rem;font-size:0.875rem;color:#6c757d">No callback windows configured yet. Set them in <a href="#/staff/scheduling">Scheduling Configuration</a>.</p>';
+    return `<p style="margin-top:var(--space-lg);font-size:var(--text-small);color:var(--color-text-muted)">No callback windows configured yet. Set them in <a href="#/staff/scheduling">Scheduling</a>.</p>`;
   }
 
-  let html = '<h2 style="margin-top:1.5rem">Callback Windows</h2>';
+  let html = '<h2 style="margin-top:var(--space-xl)">Callback Windows</h2>';
   html += '<table class="data-table"><thead><tr><th>Date</th><th>Start</th><th>End</th></tr></thead><tbody>';
   windowConfigs.forEach((c) => {
     html += `<tr><td>${formatDate(c.audition_date)}</td><td>${formatTime(c.callback_start_time)}</td><td>${formatTime(c.callback_end_time)}</td></tr>`;
@@ -242,10 +267,10 @@ function renderCallbackWindows() {
 }
 
 function renderNotificationHistory() {
-  let html = '<h2 style="margin-top:1.5rem">Notification History</h2>';
+  let html = '<h2 style="margin-top:var(--space-xl)">Notification History</h2>';
 
   if (history.length === 0) {
-    html += '<p style="font-size:0.875rem;color:#6c757d">No notifications sent yet.</p>';
+    html += '<p style="font-size:var(--text-small);color:var(--color-text-muted)">No notifications sent yet.</p>';
     return html;
   }
 
@@ -268,11 +293,11 @@ function renderNotificationHistory() {
     const date = new Date(h.created_at).toLocaleString();
     html += `
       <tr>
-        <td>${escapeHtml(date)}</td>
+        <td style="font-size:var(--text-xs)">${escapeHtml(date)}</td>
         <td>${escapeHtml(st?.first_name || '')} ${escapeHtml(st?.last_name || '')}</td>
         <td>${escapeHtml(h.recipient_email)}</td>
         <td>${escapeHtml(h.subject)}</td>
-        <td>${escapeHtml(h.status)}</td>
+        <td><span class="status-badge--complete">${escapeHtml(h.status)}</span></td>
       </tr>
     `;
   });
@@ -282,6 +307,64 @@ function renderNotificationHistory() {
 }
 
 function bindContentEvents(contentEl) {
+  // Select all checkbox
+  const selectAllCb = document.getElementById('select-all-cb');
+  if (selectAllCb) {
+    selectAllCb.addEventListener('change', () => {
+      if (selectAllCb.checked) {
+        students.forEach((s) => selectedIds.add(s.id));
+      } else {
+        selectedIds.clear();
+      }
+      renderContent();
+    });
+  }
+
+  // Individual checkboxes
+  contentEl.querySelectorAll('.student-cb').forEach((cb) => {
+    cb.addEventListener('change', () => {
+      if (cb.checked) selectedIds.add(cb.dataset.id);
+      else selectedIds.delete(cb.dataset.id);
+      renderContent();
+    });
+  });
+
+  // Bulk invite
+  const bulkInviteBtn = document.getElementById('bulk-invite-btn');
+  if (bulkInviteBtn) {
+    bulkInviteBtn.addEventListener('click', async () => {
+      const msgEl = document.getElementById('callback-msg');
+      bulkInviteBtn.disabled = true;
+      bulkInviteBtn.textContent = 'Inviting…';
+
+      for (const id of selectedIds) {
+        await toggleCallbackInvite(id, true);
+      }
+
+      selectedIds.clear();
+      if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'Selected students invited.'; }
+      await loadAndRender();
+    });
+  }
+
+  // Bulk uninvite
+  const bulkUninviteBtn = document.getElementById('bulk-uninvite-btn');
+  if (bulkUninviteBtn) {
+    bulkUninviteBtn.addEventListener('click', async () => {
+      const msgEl = document.getElementById('callback-msg');
+      bulkUninviteBtn.disabled = true;
+      bulkUninviteBtn.textContent = 'Removing…';
+
+      for (const id of selectedIds) {
+        await toggleCallbackInvite(id, false);
+      }
+
+      selectedIds.clear();
+      if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'Invites removed for selected students.'; }
+      await loadAndRender();
+    });
+  }
+
   // Invite toggle buttons
   contentEl.querySelectorAll('.invite-toggle-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
@@ -322,7 +405,17 @@ function bindContentEvents(contentEl) {
       btn.textContent = 'Sending…';
 
       const { subject, body, bodyPreview } = generateCallbackNotificationContent(student, configs);
-      console.log(`[MOCK EMAIL] To: ${student.parent_email} | Subject: ${subject}\n${body}`);
+      const { error: sendError } = await sendNotificationEmail({
+        to: student.parent_email,
+        subject,
+        text: body,
+      });
+      if (sendError) {
+        btn.disabled = false;
+        btn.textContent = 'Send';
+        if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = sendError.message || 'Failed to send notification.'; }
+        return;
+      }
 
       const { error } = await logNotificationSend(student.id, student.parent_email, subject, bodyPreview);
 

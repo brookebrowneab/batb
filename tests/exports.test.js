@@ -141,6 +141,11 @@ describe('callbacksToCsvData', () => {
     const { headers } = callbacksToCsvData([]);
     expect(headers).toContain('Callback Invited');
     expect(headers).toContain('Registration Complete');
+    expect(headers).toContain('Parent 2 Email');
+    expect(headers).toContain('Parent 2 First Name');
+    expect(headers).toContain('Student Email');
+    expect(headers).toContain('Sings Own Song');
+    expect(headers).toContain('Song Name');
   });
 
   it('maps callback_invited boolean to Yes/No', () => {
@@ -153,6 +158,18 @@ describe('callbacksToCsvData', () => {
     expect(rows[0][4]).toBe('No');
     expect(rows[1][3]).toBe('No');
     expect(rows[1][4]).toBe('Yes');
+  });
+
+  it('maps sings_own_disney_song boolean to Yes/No', () => {
+    const students = [
+      { first_name: 'A', sings_own_disney_song: true, song_name: 'Let It Go' },
+      { first_name: 'B', sings_own_disney_song: false },
+    ];
+    const { rows } = callbacksToCsvData(students);
+    expect(rows[0][10]).toBe('Yes');
+    expect(rows[0][11]).toBe('Let It Go');
+    expect(rows[1][10]).toBe('No');
+    expect(rows[1][11]).toBe('');
   });
 });
 

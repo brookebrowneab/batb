@@ -48,7 +48,12 @@ export function getQueryParams() {
   const pairs = hash.slice(qIndex + 1).split('&');
   for (const pair of pairs) {
     const [key, value] = pair.split('=');
-    if (key) params[decodeURIComponent(key)] = decodeURIComponent(value || '');
+    if (!key) continue;
+    try {
+      params[decodeURIComponent(key)] = decodeURIComponent(value || '');
+    } catch {
+      // Ignore malformed query encoding instead of crashing route render.
+    }
   }
   return params;
 }
@@ -60,6 +65,8 @@ export function startRouter(containerSelector) {
   }
 
   function renderCurrentRoute() {
+    // Dynamic lookup: container may be rebuilt by layout changes
+    const target = document.querySelector(containerSelector) || container;
     const fullPath = currentPath();
     const path = fullPath.split('?')[0];
 
@@ -76,10 +83,10 @@ export function startRouter(containerSelector) {
     const content = match ? match.render() : notFoundRenderer();
 
     if (typeof content === 'string') {
-      container.innerHTML = content;
+      target.innerHTML = content;
     } else if (content instanceof HTMLElement) {
-      container.innerHTML = '';
-      container.appendChild(content);
+      target.innerHTML = '';
+      target.appendChild(content);
     }
 
     updateActiveLinks(path);

@@ -139,10 +139,12 @@ begin
     raise exception 'Registration must be complete before signing up for dance.';
   end if;
 
-  -- 3. Verify the dance session exists and get its date + capacity
+  -- 3. Verify the dance session exists and get its date + capacity.
+  -- Lock the row to serialize concurrent capacity checks and writes.
   select audition_date, capacity
   into v_audition_date, v_capacity
-  from dance_sessions where id = p_dance_session_id;
+  from dance_sessions where id = p_dance_session_id
+  for update;
 
   if v_audition_date is null then
     raise exception 'Dance session not found.';

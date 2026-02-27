@@ -77,10 +77,9 @@ export async function generateVocalSlotsFromConfig(staffUserId) {
  * @returns {Promise<{error: Error|null}>}
  */
 export async function deleteVocalSlot(slotId) {
-  const { error } = await supabase
-    .from('audition_slots')
-    .delete()
-    .eq('id', slotId);
+  const { error } = await supabase.rpc('admin_delete_vocal_slot', {
+    p_slot_id: slotId,
+  });
   return { error };
 }
 

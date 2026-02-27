@@ -71,6 +71,19 @@ export function hasValidAcceptance(acceptances, activeContractId) {
  * @param {string|null} activeContractId - id of the currently active contract
  * @returns {{ complete: boolean, missing: string[] }}
  */
+/**
+ * Validate song choice: if student sings own Disney song, song name is required.
+ * @param {boolean} singsOwnSong
+ * @param {string} songName
+ * @returns {{ valid: boolean, error: string|null }}
+ */
+export function validateSongChoice(singsOwnSong, songName) {
+  if (singsOwnSong && !filled(songName)) {
+    return { valid: false, error: 'Please enter the song name.' };
+  }
+  return { valid: true, error: null };
+}
+
 export function evaluateRegistration(student, acceptances, activeContractId) {
   const missing = [];
 

@@ -25,7 +25,7 @@ export async function toggleCallbackInvite(studentId, invited) {
 export async function fetchAllStudentsForCallbacks() {
   const { data, error } = await supabase
     .from('students')
-    .select('id, first_name, last_name, grade, callback_invited, parent_email, parent_first_name, registration_complete')
+    .select('id, first_name, last_name, grade, callback_invited, parent_email, parent_first_name, registration_complete, parent2_email, parent2_first_name, student_email, sings_own_disney_song, song_name')
     .order('last_name', { ascending: true })
     .order('first_name', { ascending: true });
   return { data: data || [], error };

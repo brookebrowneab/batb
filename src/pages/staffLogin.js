@@ -5,16 +5,20 @@ export function renderStaffLogin() {
   const container = document.createElement('div');
   container.className = 'page';
   container.innerHTML = `
-    <h1>Staff Login</h1>
-    <p>Sign in with your staff credentials.</p>
-    <form id="staff-login-form" class="login-form">
-      <label for="staff-email">Email</label>
-      <input type="email" id="staff-email" name="email" required placeholder="staff@example.com" />
-      <label for="staff-password">Password</label>
-      <input type="password" id="staff-password" name="password" required />
-      <button type="submit">Sign In</button>
-      <div id="staff-login-message" class="form-message" aria-live="polite"></div>
-    </form>
+    <div class="login-card">
+      <h2>Staff Login 🎭</h2>
+      <p style="text-align:center;color:var(--color-text-secondary);margin-bottom:var(--space-lg);font-size:var(--text-small)">
+        Sign in with your staff credentials.
+      </p>
+      <form id="staff-login-form" class="login-form">
+        <label for="staff-email">Email</label>
+        <input type="email" id="staff-email" name="email" required placeholder="staff@example.com" />
+        <label for="staff-password">Password</label>
+        <input type="password" id="staff-password" name="password" required />
+        <button type="submit">Sign In</button>
+        <div id="staff-login-message" class="form-message" aria-live="polite"></div>
+      </form>
+    </div>
   `;
 
   setTimeout(() => {
@@ -52,7 +56,7 @@ export function renderStaffLogin() {
       }
 
       // Full reload — initAuth on page load will pick up the session and role
-      window.location.hash = '#/admin';
+      window.location.hash = '#/staff';
       window.location.reload();
     });
   }, 0);

@@ -168,53 +168,34 @@ describe('Dance sign-up authorization (structural)', () => {
     expect(mainContent).toContain("'/staff/dance-roster'");
   });
 
-  it('dance sign-ups use RPC pattern (not direct table insert)', () => {
+  it('dance adapter reads assignment windows from scheduling config', () => {
     const adapterContent = readFileSync(
       join(process.cwd(), 'src', 'adapters', 'danceSessions.js'),
       'utf-8',
     );
-    expect(adapterContent).toContain("rpc('upsert_dance_signup'");
-    expect(adapterContent).toContain("rpc('admin_update_dance_signup'");
-    expect(adapterContent).toContain("rpc('delete_dance_signup'");
+    expect(adapterContent).toContain("from('audition_window_config')");
+    expect(adapterContent).toContain('fetchAssignedDanceRoster');
   });
 });
 
-describe('Lock time enforcement (structural)', () => {
-  it('RPC migration contains lock time check with 14:00', () => {
-    const migration = readFileSync(
-      join(process.cwd(), 'supabase', 'migrations', '00008_dance_sessions_and_signups.sql'),
+describe('Dance assignment model (structural)', () => {
+  it('family dance page is assignment-based and no longer renders booking controls', () => {
+    const page = readFileSync(
+      join(process.cwd(), 'src', 'pages', 'familyDanceSignup.js'),
       'utf-8',
     );
-    expect(migration).toContain('14:00:00');
-    expect(migration).toContain('locked');
+    expect(page).toContain('required for all students');
+    expect(page).not.toContain('confirm-booking-btn');
+    expect(page).not.toContain('cancel-btn');
   });
 
-  it('admin RPC exists and does NOT check lock time', () => {
-    const migration = readFileSync(
-      join(process.cwd(), 'supabase', 'migrations', '00008_dance_sessions_and_signups.sql'),
+  it('staff dance roster no longer exposes generate or admin override actions', () => {
+    const page = readFileSync(
+      join(process.cwd(), 'src', 'pages', 'staffDanceRoster.js'),
       'utf-8',
     );
-    expect(migration).toContain('admin_update_dance_signup');
-    // The admin function should contain admin check but NOT lock_time variable
-    const adminFnStart = migration.indexOf('admin_update_dance_signup');
-    const adminFnBody = migration.slice(adminFnStart);
-    expect(adminFnBody).toContain("role = 'admin'");
-  });
-
-  it('uniqueness constraint exists (one signup per student)', () => {
-    const migration = readFileSync(
-      join(process.cwd(), 'supabase', 'migrations', '00008_dance_sessions_and_signups.sql'),
-      'utf-8',
-    );
-    expect(migration).toContain('dance_signups_student_idx');
-    expect(migration).toContain('(student_id)');
-  });
-
-  it('family RPC checks registration_complete', () => {
-    const migration = readFileSync(
-      join(process.cwd(), 'supabase', 'migrations', '00008_dance_sessions_and_signups.sql'),
-      'utf-8',
-    );
-    expect(migration).toContain('registration_complete');
+    expect(page).not.toContain('generate-sessions-btn');
+    expect(page).not.toContain('Admin Override');
+    expect(page).toContain('auto-assigned from scheduling config');
   });
 });

@@ -197,7 +197,9 @@ function bindFormSubmit(refreshFn) {
 
     msg.textContent = isEdit ? 'Updated!' : 'Added!';
     msg.className = 'form-message success';
-    refreshFn();
+
+    // Keep success feedback visible briefly before re-rendering.
+    setTimeout(() => refreshFn(), 300);
   });
 }
 
@@ -205,10 +207,14 @@ export function renderStaffScheduling() {
   const container = document.createElement('div');
   container.className = 'page';
   container.innerHTML = `
-    <h1>Scheduling Configuration</h1>
-    <p><a href="#/staff">&larr; Back to Staff Dashboard</a></p>
-    <div id="config-table"><p>Loading…</p></div>
-    <div id="config-form-container"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-md)">
+      <h1 style="margin:0">Scheduling Configuration 📅</h1>
+      <button class="btn-ghost" onclick="location.hash='#/staff'" style="min-height:auto;width:auto">← Dashboard</button>
+    </div>
+    <div class="card" style="margin-bottom:var(--space-lg)">
+      <div id="config-table"><p>Loading…</p></div>
+    </div>
+    <div class="card" id="config-form-container"></div>
   `;
 
   async function refresh() {

@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import {
   hasRequiredStudentFields,
   hasRequiredParentFields,
   hasPhoto,
   hasValidAcceptance,
   evaluateRegistration,
+  validateSongChoice,
 } from '../src/domain/registration.js';
 
 // --- hasRequiredStudentFields ---
@@ -238,5 +241,143 @@ describe('evaluateRegistration', () => {
 
     const result2 = evaluateRegistration(completeStudent, [oldAcceptance, newAcceptance], 'v2');
     expect(result2.complete).toBe(true);
+  });
+
+  it('optional fields (student_email, parent2, song) do not block registration_complete', () => {
+    // Student with all required fields but none of the new optional fields
+    const result = evaluateRegistration(completeStudent, [validAcceptance], 'active-contract');
+    expect(result.complete).toBe(true);
+
+    // Student with new optional fields also completes
+    const studentWithExtras = {
+      ...completeStudent,
+      student_email: 'kid@school.edu',
+      parent2_first_name: 'Jane',
+      sings_own_disney_song: true,
+      song_name: 'Let It Go',
+    };
+    const result2 = evaluateRegistration(studentWithExtras, [validAcceptance], 'active-contract');
+    expect(result2.complete).toBe(true);
+  });
+});
+
+// --- validateSongChoice ---
+
+describe('validateSongChoice', () => {
+  it('returns valid when not singing own song', () => {
+    const result = validateSongChoice(false, '');
+    expect(result.valid).toBe(true);
+    expect(result.error).toBeNull();
+  });
+
+  it('returns valid when singing own song with name provided', () => {
+    const result = validateSongChoice(true, 'Part of Your World');
+    expect(result.valid).toBe(true);
+    expect(result.error).toBeNull();
+  });
+
+  it('returns invalid when singing own song but name is empty', () => {
+    const result = validateSongChoice(true, '');
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('song name');
+  });
+
+  it('returns invalid when singing own song but name is whitespace', () => {
+    const result = validateSongChoice(true, '   ');
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('song name');
+  });
+
+  it('returns valid when not singing own song with null name', () => {
+    const result = validateSongChoice(false, null);
+    expect(result.valid).toBe(true);
+  });
+});
+
+// --- Migration structural test ---
+
+describe('Registration new fields migration (structural)', () => {
+  const migration = readFileSync(
+    join(process.cwd(), 'supabase', 'migrations', '00016_registration_new_fields.sql'),
+    'utf-8',
+  );
+
+  it('adds student_email column', () => {
+    expect(migration).toContain('student_email');
+  });
+
+  it('adds parent2_first_name column', () => {
+    expect(migration).toContain('parent2_first_name');
+  });
+
+  it('adds parent2_last_name column', () => {
+    expect(migration).toContain('parent2_last_name');
+  });
+
+  it('adds parent2_email column', () => {
+    expect(migration).toContain('parent2_email');
+  });
+
+  it('adds parent2_phone column', () => {
+    expect(migration).toContain('parent2_phone');
+  });
+
+  it('adds sings_own_disney_song column', () => {
+    expect(migration).toContain('sings_own_disney_song');
+  });
+
+  it('adds song_name column', () => {
+    expect(migration).toContain('song_name');
+  });
+});
+
+describe('Registration completion automation (structural)', () => {
+  const migration = readFileSync(
+    join(process.cwd(), 'supabase', 'migrations', '00020_registration_schedule_email_and_auto_assign.sql'),
+    'utf-8',
+  );
+  const registrationPage = readFileSync(
+    join(process.cwd(), 'src', 'pages', 'familyRegistration.js'),
+    'utf-8',
+  );
+
+  it('creates auto_assign_vocal_day_for_registration RPC', () => {
+    expect(migration).toContain('auto_assign_vocal_day_for_registration');
+    expect(migration).toContain('security definer');
+  });
+
+  it('creates registration_email_templates table', () => {
+    expect(migration).toContain('registration_email_templates');
+    expect(migration).toContain('subject_template');
+    expect(migration).toContain('body_template');
+  });
+
+  it('family registration page calls registration schedule email sender', () => {
+    expect(registrationPage).toContain('sendRegistrationScheduleEmail');
+  });
+});
+
+describe('Family student delete policy (structural)', () => {
+  const migration = readFileSync(
+    join(process.cwd(), 'supabase', 'migrations', '00021_family_delete_student_policy.sql'),
+    'utf-8',
+  );
+
+  it('adds family delete policy on students', () => {
+    expect(migration).toContain('Families can delete own students');
+    expect(migration).toContain('on public.students for delete');
+  });
+});
+
+describe('Admin student delete policy (structural)', () => {
+  const migration = readFileSync(
+    join(process.cwd(), 'supabase', 'migrations', '00022_admin_delete_student_policy.sql'),
+    'utf-8',
+  );
+
+  it('adds admin delete policy on students', () => {
+    expect(migration).toContain('Admins can delete any student');
+    expect(migration).toContain("role = 'admin'");
+    expect(migration).toContain('on public.students for delete');
   });
 });

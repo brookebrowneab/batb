@@ -6,14 +6,14 @@
 /**
  * Group dance roster entries by session.
  * @param {Array} roster - from fetchDanceRoster()
- * @param {Array} sessions - from fetchAllDanceSessions()
+ * @param {Array} sessions - from fetchDanceWindowsFromConfig()
  * @returns {Array<{ session: object, students: Array<object> }>}
  */
 export function groupDanceRosterBySessions(roster, sessions) {
   return sessions.map((session) => ({
     session,
     students: roster
-      .filter((r) => r.dance_session_id === session.id)
+      .filter((r) => r.dance_window_id === session.id || r.dance_session_id === session.id)
       .map((r) => r.students)
       .filter(Boolean),
   }));
@@ -69,9 +69,11 @@ export function danceRosterToCsvData(roster) {
     r.students?.first_name || '',
     r.students?.last_name || '',
     r.students?.grade || '',
-    r.dance_sessions?.audition_date || '',
-    r.dance_sessions ? `${r.dance_sessions.start_time} - ${r.dance_sessions.end_time}` : '',
-    r.dance_sessions?.label || '',
+    r.dance_window?.audition_date || r.dance_sessions?.audition_date || '',
+    (r.dance_window || r.dance_sessions)
+      ? `${(r.dance_window?.start_time || r.dance_sessions?.start_time)} - ${(r.dance_window?.end_time || r.dance_sessions?.end_time)}`
+      : '',
+    r.dance_window?.label || r.dance_sessions?.label || '',
   ]);
   return { headers, rows };
 }
@@ -99,7 +101,7 @@ export function vocalRosterToCsvData(roster) {
  * @returns {{ headers: string[], rows: string[][] }}
  */
 export function callbacksToCsvData(students) {
-  const headers = ['First Name', 'Last Name', 'Grade', 'Callback Invited', 'Registration Complete', 'Parent Email', 'Parent First Name'];
+  const headers = ['First Name', 'Last Name', 'Grade', 'Callback Invited', 'Registration Complete', 'Parent Email', 'Parent First Name', 'Parent 2 Email', 'Parent 2 First Name', 'Student Email', 'Sings Own Song', 'Song Name'];
   const rows = students.map((s) => [
     s.first_name || '',
     s.last_name || '',
@@ -108,6 +110,11 @@ export function callbacksToCsvData(students) {
     s.registration_complete ? 'Yes' : 'No',
     s.parent_email || '',
     s.parent_first_name || '',
+    s.parent2_email || '',
+    s.parent2_first_name || '',
+    s.student_email || '',
+    s.sings_own_disney_song ? 'Yes' : 'No',
+    s.song_name || '',
   ]);
   return { headers, rows };
 }

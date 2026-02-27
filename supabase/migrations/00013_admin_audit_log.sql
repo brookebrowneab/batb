@@ -57,10 +57,30 @@ security definer
 set search_path = public
 as $$
 declare
+  v_is_staff boolean;
+  v_actor_id uuid;
   v_log_id uuid;
 begin
+  -- Only authenticated staff can write audit entries.
+  select auth.uid() into v_actor_id;
+  if v_actor_id is null then
+    raise exception 'Authentication required.';
+  end if;
+
+  select exists(
+    select 1 from staff_profiles where id = v_actor_id
+  ) into v_is_staff;
+  if not v_is_staff then
+    raise exception 'Only staff can write audit logs.';
+  end if;
+
+  -- Never trust client-supplied actor IDs.
+  if p_actor_id is distinct from v_actor_id then
+    raise exception 'actor_id must match auth.uid().';
+  end if;
+
   insert into admin_audit_log (action, actor_id, table_name, record_id, details)
-  values (p_action, p_actor_id, p_table_name, p_record_id, p_details)
+  values (p_action, v_actor_id, p_table_name, p_record_id, p_details)
   returning id into v_log_id;
   return v_log_id;
 end;

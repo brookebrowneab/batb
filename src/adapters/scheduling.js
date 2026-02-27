@@ -32,6 +32,7 @@ export async function createConfig(config, staffUserId) {
       vocal_end_time: config.vocal_end_time || null,
       callback_start_time: config.callback_start_time || null,
       callback_end_time: config.callback_end_time || null,
+      created_by_staff_user_id: staffUserId,
       updated_by_staff_user_id: staffUserId,
     })
     .select()

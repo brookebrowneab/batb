@@ -95,6 +95,10 @@ async function init() {
   addRoute('/staff/student-profile', renderStaffStudentProfile);
   setNotFound(renderNotFound);
 
+  // Initialize auth BEFORE starting router so guard has session/role
+  await initAuth();
+  updateNav();
+
   // Set auth guard
   setGuard((path) => {
     const { session, role } = getAuthState();
@@ -108,9 +112,6 @@ async function init() {
     updateNav();
     rerender();
   });
-
-  // Initialize auth (reads session, fetches role)
-  await initAuth();
 
   // Default to home if no hash
   if (!window.location.hash) {

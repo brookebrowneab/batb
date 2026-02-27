@@ -270,10 +270,10 @@ The build plan (claude-build-plan.md) uses M0–M10. This review schedule omits 
 - [x] **Security profile updated:** Documented XSS prevention approach in `security-profile.md` §Input Validation.
 
 **Deferred to M10 (Hardening):**
-- [ ] Dedicated audit log table for admin overrides (currently tracked via `updated_by_user_id` on records)
-- [ ] MFA for admin accounts (recommended in security-profile.md)
-- [ ] Live concurrency test (requires running Supabase instance)
-- [ ] All manual validation checklists (require running app)
+- [x] Dedicated audit log table for admin overrides — **DONE** (migration 00013, admin_audit_log table)
+- [ ] MFA for admin accounts — documented as recommended in LAUNCH.md Step 8
+- [ ] Live concurrency test — documented in SECURITY-CHECKLIST.md #6 (requires running Supabase)
+- [ ] All manual validation checklists — documented in SECURITY-CHECKLIST.md (requires running app)
 
 ---
 
@@ -283,4 +283,28 @@ The build plan (claude-build-plan.md) uses M0–M10. This review schedule omits 
 - Confirm no public roster endpoints or cached pages.
 - Confirm admin override logging is present.
 
-**Status: NOT STARTED**
+**Status: COMPLETE**
+**Commit:** *(pending)*
+**Date built:** 2026-02-26
+**Evidence:**
+- [x] Migration 00012: Missing audit fields backfilled (created_by on config, updated_by on dance_sessions/audition_slots)
+- [x] Migration 00013: admin_audit_log table + log_admin_audit RPC + updated admin RPCs with audit logging
+- [x] Admin override RPCs log to audit table (dance, vocal, callbacks)
+- [x] Contract activation moved to atomic RPC (activate_contract) with audit logging
+- [x] Config create/update logs to audit table from staffScheduling page
+- [x] Contract creation logs to audit table from adminContracts page
+- [x] UI rate limiting: createSubmitGuard utility applied to all export buttons
+- [x] RLS regression tests: all 12 tables verified for RLS enabled
+- [x] Family isolation tests: ownership checks on students, signups, bookings, acceptances, storage
+- [x] Staff-only protection tests: audit_log, evaluations, notifications
+- [x] Booking RPC regression: ownership, registration, lock time, capacity, uniqueness, SELECT FOR UPDATE
+- [x] Rate limiting unit tests: guard behavior verified
+- [x] LAUNCH.md: complete deployment guide with pre-launch checklist
+- [x] SECURITY-CHECKLIST.md: manual penetration-lite test plan (10 categories)
+- [x] Decision D-016 recorded (admin audit log table design)
+- [x] 380 total tests pass (67 new in hardening.test.js), 0 lint errors, build succeeds
+**Manual validation:** Pending — requires running Supabase instance + SECURITY-CHECKLIST.md execution
+**Open items (post-launch):**
+- [ ] Replace mock email provider with real provider
+- [ ] MFA for admin accounts (documented in LAUNCH.md)
+- [ ] Live concurrency test (documented in SECURITY-CHECKLIST.md)

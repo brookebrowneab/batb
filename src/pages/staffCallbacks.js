@@ -1,5 +1,5 @@
 import { escapeHtml } from '../ui/escapeHtml.js';
-import { formatTime } from '../domain/scheduling.js';
+import { formatTime, formatDate } from '../domain/scheduling.js';
 import {
   isCallbackInvited,
   generateCallbackNotificationContent,
@@ -13,6 +13,10 @@ import {
 } from '../adapters/callbacks.js';
 import { fetchAllConfigs } from '../adapters/scheduling.js';
 import { exportFullTrackPdf, exportCallbacksCsv } from '../exports/index.js';
+import { createSubmitGuard } from '../ui/rateLimiting.js';
+
+const guardedExportPdf = createSubmitGuard(exportFullTrackPdf);
+const guardedExportCsv = createSubmitGuard(exportCallbacksCsv);
 
 let students = [];
 let configs = [];
@@ -72,7 +76,7 @@ function renderActions() {
     btn.textContent = 'Generating PDF…';
     if (msgEl) { msgEl.className = 'form-message'; msgEl.textContent = ''; }
     try {
-      await exportFullTrackPdf();
+      await guardedExportPdf();
       if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'PDF downloaded.'; }
     } catch (err) {
       if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
@@ -87,7 +91,7 @@ function renderActions() {
     btn.disabled = true;
     btn.textContent = 'Exporting…';
     try {
-      await exportCallbacksCsv();
+      await guardedExportCsv();
       if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'CSV downloaded.'; }
     } catch (err) {
       if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
@@ -172,6 +176,7 @@ function renderContent() {
 function renderStudentTable() {
   let html = `
     <h2>Students</h2>
+    <div class="table-responsive">
     <table class="data-table">
       <thead>
         <tr>
@@ -216,7 +221,7 @@ function renderStudentTable() {
     `;
   });
 
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
   return html;
 }
 
@@ -230,7 +235,7 @@ function renderCallbackWindows() {
   let html = '<h2 style="margin-top:1.5rem">Callback Windows</h2>';
   html += '<table class="data-table"><thead><tr><th>Date</th><th>Start</th><th>End</th></tr></thead><tbody>';
   windowConfigs.forEach((c) => {
-    html += `<tr><td>${c.audition_date}</td><td>${formatTime(c.callback_start_time)}</td><td>${formatTime(c.callback_end_time)}</td></tr>`;
+    html += `<tr><td>${formatDate(c.audition_date)}</td><td>${formatTime(c.callback_start_time)}</td><td>${formatTime(c.callback_end_time)}</td></tr>`;
   });
   html += '</tbody></table>';
   return html;
@@ -283,6 +288,9 @@ function bindContentEvents(contentEl) {
       const studentId = btn.dataset.id;
       const currentlyInvited = btn.dataset.invited === 'true';
       const newState = !currentlyInvited;
+
+      if (currentlyInvited && !window.confirm('Remove this student\'s callback invite?')) return;
+
       const msgEl = document.getElementById('callback-msg');
 
       btn.disabled = true;

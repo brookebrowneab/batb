@@ -73,16 +73,14 @@ describe('canAccessRoute', () => {
 
   it('allows unauthenticated access to /family/login', () => {
     const result = canAccessRoute('/family/login', null, ROLES.FAMILY);
-    // /family/login starts with /family, so it requires auth
-    expect(result.allowed).toBe(false);
-    expect(result.redirect).toBe('/family/login');
+    expect(result.allowed).toBe(true);
+    expect(result.redirect).toBe(null);
   });
 
   it('allows unauthenticated access to /staff/login', () => {
-    // /staff/login starts with /staff, so it requires staff role
     const result = canAccessRoute('/staff/login', null, ROLES.FAMILY);
-    expect(result.allowed).toBe(false);
-    expect(result.redirect).toBe('/staff/login');
+    expect(result.allowed).toBe(true);
+    expect(result.redirect).toBe(null);
   });
 
   // Family routes

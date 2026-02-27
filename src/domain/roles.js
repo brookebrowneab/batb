@@ -64,6 +64,11 @@ export function isDirector(role) {
  * @returns {{ allowed: boolean, redirect: string|null }}
  */
 export function canAccessRoute(path, session, role) {
+  // Login pages are always public
+  if (path === '/family/login' || path === '/staff/login') {
+    return { allowed: true, redirect: null };
+  }
+
   // Family routes require any authenticated session
   if (path.startsWith('/family')) {
     if (!session) return { allowed: false, redirect: '/family/login' };

@@ -204,3 +204,19 @@
 - `student_evaluations` table with RLS: staff SELECT all, INSERT/UPDATE own, admin DELETE.
 - Profile page displays all notes and provides add/edit form.
 - M9 can pull evaluation content directly for PDF generation.
+
+## D-016 — Admin Audit Log Table Design
+**Date:** 2026-02-26
+**Decision:** Create a dedicated `admin_audit_log` table with SECURITY DEFINER RPC (`log_admin_audit`) for appending entries. Admin override RPCs call `log_admin_audit` at the end of their transaction.
+
+**Rationale:**
+- Deferred item from Cross-Cutting Compliance Remediation.
+- Centralized audit trail for all admin/staff override actions.
+- Append-only design with no UPDATE/DELETE policies — tamper-resistant.
+- SECURITY DEFINER insert function prevents unauthorized audit entries.
+
+**Implications:**
+- Existing RPCs (`admin_update_dance_signup`, `admin_override_vocal_booking`, `toggle_callback_invite`) replaced with versions that include audit logging (same parameter signatures).
+- New `activate_contract` RPC replaces two-step client-side approach, adding atomicity and audit logging.
+- Staff can view audit log; families cannot.
+- Page-level audit calls for config create/update and contract creation.

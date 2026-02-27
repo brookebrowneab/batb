@@ -51,26 +51,15 @@ export async function createContract(versionNumber, textSnapshot, staffUserId) {
 
 /**
  * Set a contract as active (admin only).
- * First deactivates all contracts, then activates the specified one.
+ * Uses atomic RPC that deactivates all, activates target, and logs audit entry.
  * @param {string} contractId
  * @returns {Promise<{error: Error|null}>}
  */
 export async function setActiveContract(contractId) {
-  // Deactivate all contracts first
-  const { error: deactivateError } = await supabase
-    .from('contracts')
-    .update({ is_active: false })
-    .eq('is_active', true);
-
-  if (deactivateError) return { error: deactivateError };
-
-  // Activate the target contract
-  const { error: activateError } = await supabase
-    .from('contracts')
-    .update({ is_active: true })
-    .eq('id', contractId);
-
-  return { error: activateError };
+  const { error } = await supabase.rpc('activate_contract', {
+    p_contract_id: contractId,
+  });
+  return { error };
 }
 
 /**

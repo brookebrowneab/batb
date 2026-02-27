@@ -68,11 +68,18 @@ Primary risks:
 - Sanitize free-text responses for display/export contexts.
 - **XSS prevention (confirmed M5/M6):** All user-provided data (`first_name`, `last_name`, `grade`, `email`, `display_name`, `label`, `text_snapshot`, typed signatures) is passed through `escapeHtml()` before insertion into `innerHTML`. Shared utility at `src/ui/escapeHtml.js`.
 
-## Audit Logging
-Minimum required:
-- created_at/updated_at on all core records.
-- created_by/updated_by for student edits, booking changes, config changes.
-- admin override log (who, what, when, before/after snapshot references).
+## Audit Logging (Confirmed M10)
+- **Dedicated audit table:** `admin_audit_log` — append-only, staff-readable, no direct INSERT/UPDATE/DELETE. Inserts via SECURITY DEFINER `log_admin_audit` RPC only.
+- **Actions logged:** admin_override_dance_signup, admin_override_vocal_booking, toggle_callback_invite, activate_contract, create_config, update_config, create_contract.
+- **Details column:** JSONB snapshot of relevant parameters (student_id, session_id, slot_id, etc.).
+- **Actor attribution:** All critical tables have created_by/updated_by fields (backfilled in migration 00012); admin overrides additionally logged in admin_audit_log with actor_id.
+- **Audit field coverage:** students, dance_signups, vocal_bookings have full 4-field audit. Config tables have created_by + updated_by. Immutable tables (contracts, acceptances) have created_by/signed_by only.
+
+## Rate Limiting (Confirmed M10)
+- **Client-side guard:** `createSubmitGuard` utility wraps async handlers with in-flight blocking and cooldown (default 1000ms).
+- **Applied to:** Export buttons (PDF/CSV) on all three roster pages.
+- **Existing protection:** All form buttons already disable during async operations (defense-in-depth).
+- **Server-side:** No Supabase rate limiting available without Edge Functions. Transactional RPCs with SELECT FOR UPDATE provide natural serialization for booking operations.
 
 ## Compliance Notes (Minors)
 - Principle of least privilege.

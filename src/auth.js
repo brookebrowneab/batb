@@ -42,6 +42,17 @@ async function resolveRole(userId) {
   currentRole = parseRole(profile);
 }
 
+/**
+ * Force-refresh auth state from Supabase. Call after login to ensure
+ * the global auth state is current before navigating.
+ */
+export async function refreshAuthState() {
+  const { session } = await getSession();
+  currentSession = session;
+  await resolveRole(session?.user?.id);
+  notify();
+}
+
 export async function initAuth() {
   const { session } = await getSession();
   currentSession = session;

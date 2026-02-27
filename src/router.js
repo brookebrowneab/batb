@@ -36,6 +36,23 @@ export function currentPath() {
   return window.location.hash.slice(1) || '/';
 }
 
+/**
+ * Parse query parameters from the current hash URL.
+ * e.g. #/staff/student-profile?id=abc → { id: 'abc' }
+ */
+export function getQueryParams() {
+  const hash = window.location.hash.slice(1) || '/';
+  const qIndex = hash.indexOf('?');
+  if (qIndex === -1) return {};
+  const params = {};
+  const pairs = hash.slice(qIndex + 1).split('&');
+  for (const pair of pairs) {
+    const [key, value] = pair.split('=');
+    if (key) params[decodeURIComponent(key)] = decodeURIComponent(value || '');
+  }
+  return params;
+}
+
 export function startRouter(containerSelector) {
   const container = document.querySelector(containerSelector);
   if (!container) {
@@ -43,7 +60,8 @@ export function startRouter(containerSelector) {
   }
 
   function renderCurrentRoute() {
-    const path = currentPath();
+    const fullPath = currentPath();
+    const path = fullPath.split('?')[0];
 
     // Run global guard
     if (globalGuard) {
@@ -74,9 +92,9 @@ export function startRouter(containerSelector) {
   return { rerender: renderCurrentRoute };
 }
 
-function updateActiveLinks(currentPath) {
+function updateActiveLinks(activePath) {
   document.querySelectorAll('nav a[data-route]').forEach((link) => {
     const route = link.getAttribute('data-route');
-    link.classList.toggle('active', route === currentPath);
+    link.classList.toggle('active', route === activePath);
   });
 }

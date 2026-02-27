@@ -15,6 +15,8 @@ const pagesWithUserData = [
   'familyRegistration.js',
   'staffDanceRoster.js',
   'staffVocalRoster.js',
+  'staffCallbacks.js',
+  'staffStudentProfile.js',
   'adminContracts.js',
   'adminDashboard.js',
   'staffDashboard.js',

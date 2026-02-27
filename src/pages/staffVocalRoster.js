@@ -15,6 +15,7 @@ import {
 let slots = [];
 let roster = [];
 let counts = {};
+let dateFilter = '';
 
 export function renderStaffVocalRoster() {
   const container = document.createElement('div');
@@ -95,14 +96,26 @@ function renderContent() {
     return;
   }
 
-  // Group slots by date
+  // Date filter
+  const dates = [...new Set(slots.map((s) => s.audition_date))].sort();
+  let html = '<div style="margin-bottom:1rem"><label for="vocal-date-filter" style="margin-right:0.5rem"><strong>Filter by date:</strong></label>';
+  html += '<select id="vocal-date-filter" style="padding:0.4rem;border:1px solid #ced4da;border-radius:4px">';
+  html += '<option value="">All dates</option>';
+  dates.forEach((d) => {
+    html += `<option value="${d}" ${dateFilter === d ? 'selected' : ''}>${d}</option>`;
+  });
+  html += '</select></div>';
+
+  const filteredSlots = dateFilter ? slots.filter((s) => s.audition_date === dateFilter) : slots;
+
+  // Group filtered slots by date
   const byDate = {};
-  slots.forEach((s) => {
+  filteredSlots.forEach((s) => {
     if (!byDate[s.audition_date]) byDate[s.audition_date] = [];
     byDate[s.audition_date].push(s);
   });
 
-  let html = `
+  html += `
     <table class="data-table">
       <thead>
         <tr>
@@ -115,7 +128,7 @@ function renderContent() {
       <tbody>
   `;
 
-  slots.forEach((s) => {
+  filteredSlots.forEach((s) => {
     const count = counts[s.id] || 0;
     html += `
       <tr>
@@ -146,7 +159,8 @@ function renderContent() {
         html += '<table class="data-table"><thead><tr><th>#</th><th>Student</th><th>Grade</th></tr></thead><tbody>';
         attendees.forEach((a, i) => {
           const st = a.students;
-          html += `<tr><td>${i + 1}</td><td>${escapeHtml(st?.first_name || '')} ${escapeHtml(st?.last_name || '')}</td><td>${escapeHtml(st?.grade || '—')}</td></tr>`;
+          const profileLink = `#/staff/student-profile?id=${st?.id || ''}`;
+          html += `<tr><td>${i + 1}</td><td><a href="${profileLink}">${escapeHtml(st?.first_name || '')} ${escapeHtml(st?.last_name || '')}</a></td><td>${escapeHtml(st?.grade || '—')}</td></tr>`;
         });
         html += '</tbody></table>';
       }
@@ -186,6 +200,15 @@ function renderAdminOverride() {
 }
 
 function bindContentEvents(contentEl) {
+  // Date filter
+  const filterEl = document.getElementById('vocal-date-filter');
+  if (filterEl) {
+    filterEl.addEventListener('change', () => {
+      dateFilter = filterEl.value;
+      renderContent();
+    });
+  }
+
   // Delete slot buttons
   contentEl.querySelectorAll('.delete-slot-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {

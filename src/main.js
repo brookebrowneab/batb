@@ -18,6 +18,7 @@ import { renderStaffDanceRoster } from './pages/staffDanceRoster.js';
 import { renderFamilyVocalBooking } from './pages/familyVocalBooking.js';
 import { renderStaffVocalRoster } from './pages/staffVocalRoster.js';
 import { renderStaffCallbacks } from './pages/staffCallbacks.js';
+import { renderStaffStudentProfile } from './pages/staffStudentProfile.js';
 
 function renderNav() {
   const { session, role } = getAuthState();
@@ -91,6 +92,7 @@ async function init() {
   addRoute('/staff/dance-roster', renderStaffDanceRoster);
   addRoute('/staff/vocal-roster', renderStaffVocalRoster);
   addRoute('/staff/callbacks', renderStaffCallbacks);
+  addRoute('/staff/student-profile', renderStaffStudentProfile);
   setNotFound(renderNotFound);
 
   // Set auth guard

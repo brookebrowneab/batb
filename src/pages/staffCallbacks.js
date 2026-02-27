@@ -161,7 +161,7 @@ function renderStudentTable() {
     html += `
       <tr>
         <td>${i + 1}</td>
-        <td>${escapeHtml(s.first_name || '')} ${escapeHtml(s.last_name || '')}</td>
+        <td><a href="#/staff/student-profile?id=${s.id}">${escapeHtml(s.first_name || '')} ${escapeHtml(s.last_name || '')}</a></td>
         <td>${escapeHtml(s.grade || '—')}</td>
         <td style="${regClass}">${regStatus}</td>
         <td>

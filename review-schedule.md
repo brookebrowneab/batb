@@ -217,7 +217,30 @@ The build plan (claude-build-plan.md) uses M0–M10. This review schedule omits 
 - Exports staff-auth only.
 **Rollback:** disable export endpoints/features.
 
-**Status: NOT STARTED**
+**Status: PARTIALLY COMPLETE (Rosters + Profiles done; PDF/CSV pending M9)**
+**Commit:** *(pending — build-plan M8)*
+**Date built:** 2026-02-26
+**Evidence (Rosters + Profiles — M8 portion):**
+- [x] Router enhanced: query param support (`?id=xxx`) via `getQueryParams()` helper (src/router.js)
+- [x] Staff student profile page at `/staff/student-profile?id=xxx` (src/pages/staffStudentProfile.js)
+- [x] Profile shows: photo (signed URL), student info, parent info, dance/vocal participation, callback status
+- [x] Student evaluations table with RLS: staff SELECT all, INSERT/UPDATE own, admin DELETE (migration 00011)
+- [x] Evaluation notes UI: add/edit notes per track on profile page (dance, vocal, callbacks, general)
+- [x] Directors cannot edit student registration fields (existing RLS + evaluations are separate)
+- [x] Dance roster: date filter dropdown + clickable student names → profile link
+- [x] Vocal roster: date filter dropdown + clickable student names → profile link
+- [x] Callbacks page: clickable student names → profile link
+- [x] No `/family/student-profile` route — profile access is staff-only
+- [x] All user data escaped via shared `escapeHtml()` utility
+- [x] Adapter: `fetchStudentForStaff()`, `fetchEvaluationsForStudent()`, `createEvaluation()`, `updateEvaluation()`, `deleteEvaluation()`
+- [x] Domain: `assembleProfileSummary()`, `validateEvaluationInput()`
+- [x] Automated tests: studentProfile.test.js (34 cases: domain + structural)
+- [x] escapeHtml structural tests updated for new pages (269 total tests pass)
+- [x] Decision recorded: D-015 (include evaluations in MVP)
+**Manual validation:** Pending user verification
+**Open items:**
+- [ ] PDF packs (M9 — build-plan M9)
+- [ ] CSV exports (M9 — build-plan M9)
 
 ---
 

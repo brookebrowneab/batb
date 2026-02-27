@@ -187,3 +187,20 @@
 **Implications:**
 - `notification_sends` table captures who sent what to whom and when.
 - Replacing mock with real provider requires only changing the send step in the staff UI; the audit logging is already in place.
+
+---
+
+## D-015 — Include Evaluations in MVP Scope
+**Date:** 2026-02-26
+**Decision:** Include the optional `student_evaluations` table and notes UI in M8 (Rosters + Profiles) rather than deferring to hardening.
+
+**Rationale:**
+- M9 (PDF packs) needs a "notes area" — evaluations provide the content for this.
+- Small scope: one table, RLS policies, display + form on the profile page.
+- Staff can write their own notes per track (dance, vocal, callbacks, general).
+- Each staff member can only edit their own notes (RLS enforced).
+
+**Implications:**
+- `student_evaluations` table with RLS: staff SELECT all, INSERT/UPDATE own, admin DELETE.
+- Profile page displays all notes and provides add/edit form.
+- M9 can pull evaluation content directly for PDF generation.

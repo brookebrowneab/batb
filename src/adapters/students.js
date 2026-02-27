@@ -44,6 +44,20 @@ export async function createStudent({ familyAccountId, firstName, lastName, grad
 }
 
 /**
+ * Fetch a single student by ID (staff use — staff RLS allows reading all students).
+ * @param {string} studentId
+ * @returns {Promise<{data: object|null, error: Error|null}>}
+ */
+export async function fetchStudentForStaff(studentId) {
+  const { data, error } = await supabase
+    .from('students')
+    .select('*')
+    .eq('id', studentId)
+    .single();
+  return { data, error };
+}
+
+/**
  * Update a student record.
  * @param {string} studentId
  * @param {object} fields - partial update fields

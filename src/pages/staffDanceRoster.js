@@ -13,6 +13,7 @@ import {
 let sessions = [];
 let roster = [];
 let counts = {};
+let dateFilter = '';
 
 export function renderStaffDanceRoster() {
   const container = document.createElement('div');
@@ -93,7 +94,19 @@ function renderContent() {
     return;
   }
 
-  let html = `
+  // Date filter
+  const dates = [...new Set(sessions.map((s) => s.audition_date))].sort();
+  let html = '<div style="margin-bottom:1rem"><label for="dance-date-filter" style="margin-right:0.5rem"><strong>Filter by date:</strong></label>';
+  html += '<select id="dance-date-filter" style="padding:0.4rem;border:1px solid #ced4da;border-radius:4px">';
+  html += '<option value="">All dates</option>';
+  dates.forEach((d) => {
+    html += `<option value="${d}" ${dateFilter === d ? 'selected' : ''}>${d}</option>`;
+  });
+  html += '</select></div>';
+
+  const filteredSessions = dateFilter ? sessions.filter((s) => s.audition_date === dateFilter) : sessions;
+
+  html += `
     <table class="data-table">
       <thead>
         <tr>
@@ -108,7 +121,7 @@ function renderContent() {
       <tbody>
   `;
 
-  sessions.forEach((s) => {
+  filteredSessions.forEach((s) => {
     const count = counts[s.id] || 0;
     const capText = s.capacity !== null ? `${count} / ${s.capacity}` : `${count}`;
     html += `
@@ -128,7 +141,7 @@ function renderContent() {
   // Roster grouped by session
   html += '<h2 style="margin-top:1.5rem">Attendees by Session</h2>';
 
-  sessions.forEach((s) => {
+  filteredSessions.forEach((s) => {
     const attendees = roster.filter((r) => r.dance_session_id === s.id);
     html += `
       <h3 style="margin-top:1rem">${s.audition_date} — ${s.label ? escapeHtml(s.label) : formatTime(s.start_time) + ' – ' + formatTime(s.end_time)}</h3>
@@ -140,7 +153,8 @@ function renderContent() {
       html += '<table class="data-table"><thead><tr><th>#</th><th>Student</th><th>Grade</th></tr></thead><tbody>';
       attendees.forEach((a, i) => {
         const st = a.students;
-        html += `<tr><td>${i + 1}</td><td>${escapeHtml(st?.first_name || '')} ${escapeHtml(st?.last_name || '')}</td><td>${escapeHtml(st?.grade || '—')}</td></tr>`;
+        const profileLink = `#/staff/student-profile?id=${st?.id || ''}`;
+        html += `<tr><td>${i + 1}</td><td><a href="${profileLink}">${escapeHtml(st?.first_name || '')} ${escapeHtml(st?.last_name || '')}</a></td><td>${escapeHtml(st?.grade || '—')}</td></tr>`;
       });
       html += '</tbody></table>';
     }
@@ -179,6 +193,15 @@ function renderAdminOverride() {
 }
 
 function bindContentEvents(contentEl) {
+  // Date filter
+  const filterEl = document.getElementById('dance-date-filter');
+  if (filterEl) {
+    filterEl.addEventListener('change', () => {
+      dateFilter = filterEl.value;
+      renderContent();
+    });
+  }
+
   // Delete session buttons
   contentEl.querySelectorAll('.delete-session-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {

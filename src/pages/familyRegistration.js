@@ -6,6 +6,7 @@ import { generatePhotoPath } from '../adapters/storage.js';
 import { validateAcceptanceInput } from '../domain/contracts.js';
 import { hasAcceptedContract } from '../domain/contracts.js';
 import { evaluateRegistration } from '../domain/registration.js';
+import { escapeHtml } from '../ui/escapeHtml.js';
 
 /**
  * Full registration flow for a single student.
@@ -15,12 +16,6 @@ import { evaluateRegistration } from '../domain/registration.js';
 let currentStudent = null;
 let currentAcceptances = [];
 let activeContract = null;
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
 
 async function loadData(userId) {
   const [studentsResult, contractResult] = await Promise.all([

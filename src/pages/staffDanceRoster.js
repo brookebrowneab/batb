@@ -1,6 +1,7 @@
 import { getAuthState } from '../auth.js';
 import { isAdmin } from '../domain/roles.js';
 import { formatTime } from '../domain/scheduling.js';
+import { escapeHtml } from '../ui/escapeHtml.js';
 import {
   fetchAllDanceSessions,
   fetchDanceRoster,
@@ -114,7 +115,7 @@ function renderContent() {
       <tr>
         <td>${s.audition_date}</td>
         <td>${formatTime(s.start_time)} – ${formatTime(s.end_time)}</td>
-        <td>${s.label || '—'}</td>
+        <td>${escapeHtml(s.label || '—')}</td>
         <td>${s.capacity !== null ? s.capacity : 'Unlimited'}</td>
         <td>${capText}</td>
         ${admin ? `<td><button class="btn-small btn-secondary delete-session-btn" data-id="${s.id}">Delete</button></td>` : ''}
@@ -130,7 +131,7 @@ function renderContent() {
   sessions.forEach((s) => {
     const attendees = roster.filter((r) => r.dance_session_id === s.id);
     html += `
-      <h3 style="margin-top:1rem">${s.audition_date} — ${s.label || formatTime(s.start_time) + ' – ' + formatTime(s.end_time)}</h3>
+      <h3 style="margin-top:1rem">${s.audition_date} — ${s.label ? escapeHtml(s.label) : formatTime(s.start_time) + ' – ' + formatTime(s.end_time)}</h3>
     `;
 
     if (attendees.length === 0) {
@@ -139,7 +140,7 @@ function renderContent() {
       html += '<table class="data-table"><thead><tr><th>#</th><th>Student</th><th>Grade</th></tr></thead><tbody>';
       attendees.forEach((a, i) => {
         const st = a.students;
-        html += `<tr><td>${i + 1}</td><td>${st?.first_name || ''} ${st?.last_name || ''}</td><td>${st?.grade || '—'}</td></tr>`;
+        html += `<tr><td>${i + 1}</td><td>${escapeHtml(st?.first_name || '')} ${escapeHtml(st?.last_name || '')}</td><td>${escapeHtml(st?.grade || '—')}</td></tr>`;
       });
       html += '</tbody></table>';
     }
@@ -156,7 +157,7 @@ function renderContent() {
 
 function renderAdminOverride() {
   const sessionOptions = sessions
-    .map((s) => `<option value="${s.id}">${s.audition_date} — ${s.label || formatTime(s.start_time) + '–' + formatTime(s.end_time)}</option>`)
+    .map((s) => `<option value="${s.id}">${s.audition_date} — ${s.label ? escapeHtml(s.label) : formatTime(s.start_time) + '–' + formatTime(s.end_time)}</option>`)
     .join('');
 
   return `

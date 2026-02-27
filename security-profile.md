@@ -66,6 +66,7 @@ Primary risks:
 ## Input Validation
 - Validate required fields server-side (or via DB constraints where possible).
 - Sanitize free-text responses for display/export contexts.
+- **XSS prevention (confirmed M5/M6):** All user-provided data (`first_name`, `last_name`, `grade`, `email`, `display_name`, `label`, `text_snapshot`, typed signatures) is passed through `escapeHtml()` before insertion into `innerHTML`. Shared utility at `src/ui/escapeHtml.js`.
 
 ## Audit Logging
 Minimum required:

@@ -1,4 +1,5 @@
 import { getAuthState } from '../auth.js';
+import { escapeHtml } from '../ui/escapeHtml.js';
 
 export function renderStaffDashboard() {
   const { user, role, staffProfile } = getAuthState();
@@ -6,7 +7,7 @@ export function renderStaffDashboard() {
   return `
     <div class="page">
       <h1>Staff Dashboard</h1>
-      <p>Welcome, ${displayName}. Role: <strong>${role}</strong></p>
+      <p>Welcome, ${escapeHtml(displayName)}. Role: <strong>${escapeHtml(role)}</strong></p>
       <h2>Management</h2>
       <ul class="admin-links">
         <li><a href="#/staff/scheduling">Scheduling Configuration</a></li>

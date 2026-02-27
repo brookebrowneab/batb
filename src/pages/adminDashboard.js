@@ -1,4 +1,5 @@
 import { getAuthState } from '../auth.js';
+import { escapeHtml } from '../ui/escapeHtml.js';
 
 export function renderAdminDashboard() {
   const { user, staffProfile } = getAuthState();
@@ -6,7 +7,7 @@ export function renderAdminDashboard() {
   return `
     <div class="page">
       <h1>Admin Dashboard</h1>
-      <p>Welcome, ${displayName}.</p>
+      <p>Welcome, ${escapeHtml(displayName)}.</p>
       <h2>Management</h2>
       <ul class="admin-links">
         <li><a href="#/admin/contracts">Contract Management</a></li>

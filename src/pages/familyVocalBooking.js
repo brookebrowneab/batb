@@ -10,6 +10,7 @@ import {
 } from '../adapters/vocalBookings.js';
 import { checkVocalEligibility, isVocalLocked, checkSlotCapacity, VOCAL_SLOT_CAPACITY } from '../domain/vocalBooking.js';
 import { formatTime, LOCK_TIME_DISPLAY } from '../domain/scheduling.js';
+import { escapeHtml } from '../ui/escapeHtml.js';
 
 export function renderFamilyVocalBooking() {
   const container = document.createElement('div');
@@ -76,7 +77,7 @@ function renderStudents(contentEl, students, slots, counts, bookings) {
 
       return `
         <div class="student-card" style="background:#fff;border:1px solid #dee2e6;margin-bottom:1rem">
-          <h3>${student.first_name || 'Unnamed'} ${student.last_name || 'Student'}</h3>
+          <h3>${escapeHtml(student.first_name || 'Unnamed')} ${escapeHtml(student.last_name || 'Student')}</h3>
           ${renderStudentStatus(eligibility, currentSlot, locked)}
           ${eligibility.eligible ? renderSlotSelector(student, slots, counts, currentBooking, now) : ''}
           <div class="form-message" id="vocal-msg-${student.id}" aria-live="polite"></div>

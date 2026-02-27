@@ -2,6 +2,7 @@ import { getAuthState } from '../auth.js';
 import { fetchStudentsByFamily } from '../adapters/students.js';
 import { fetchActiveContract, fetchAcceptancesForStudent } from '../adapters/contracts.js';
 import { evaluateRegistration } from '../domain/registration.js';
+import { escapeHtml } from '../ui/escapeHtml.js';
 
 async function loadRegistrationStatus(userId) {
   const [studentsResult, contractResult] = await Promise.all([
@@ -31,7 +32,7 @@ function renderStudentCard(student) {
 
   return `
     <div class="student-card ${statusClass}">
-      <h3>${student.first_name || 'Unnamed'} ${student.last_name || 'Student'}</h3>
+      <h3>${escapeHtml(student.first_name || 'Unnamed')} ${escapeHtml(student.last_name || 'Student')}</h3>
       <p class="status-label"><strong>${statusLabel}</strong></p>
       ${
         registrationStatus.complete
@@ -51,7 +52,7 @@ export function renderFamilyDashboard() {
   container.className = 'page';
   container.innerHTML = `
     <h1>Family Dashboard</h1>
-    <p>Welcome, ${user?.email || 'family member'}.</p>
+    <p>Welcome, ${escapeHtml(user?.email || 'family member')}.</p>
     <h2>Actions</h2>
     <nav class="home-actions">
       <a href="#/family/register">Register Student</a>

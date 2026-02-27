@@ -202,6 +202,23 @@ The build plan (claude-build-plan.md) uses M0–M10. This review schedule omits 
 
 ---
 
+### Cross-Cutting Compliance Remediation (Post-Audit)
+**Date:** 2026-02-26
+**Trigger:** Comprehensive compliance audit against all 12 context/governance documents.
+
+**Addressed:**
+- [x] **XSS prevention:** Created shared `src/ui/escapeHtml.js` utility. All 10 pages rendering user data now import and use it. Eliminated 3 duplicated local `escapeHtml` functions. Structural tests in `escapeHtml.test.js` (15 cases) enforce that all pages import from the shared utility and that no page defines its own.
+- [x] **Deviation report updated:** Recorded DEV-001 (separate booking tables) and DEV-002 (hard-delete for cancellations instead of soft-cancel) in `deviation-report.md` with risk assessments and remediation paths.
+- [x] **Security profile updated:** Documented XSS prevention approach in `security-profile.md` §Input Validation.
+
+**Deferred to M10 (Hardening):**
+- [ ] Dedicated audit log table for admin overrides (currently tracked via `updated_by_user_id` on records)
+- [ ] MFA for admin accounts (recommended in security-profile.md)
+- [ ] Live concurrency test (requires running Supabase instance)
+- [ ] All manual validation checklists (require running app)
+
+---
+
 ### Final Security Review (Pre-Launch)
 - Attempt IDOR access with guessed IDs (must fail).
 - Validate photo storage access restrictions.

@@ -1,6 +1,7 @@
 import { getAuthState } from '../auth.js';
 import { isAdmin } from '../domain/roles.js';
 import { formatTime } from '../domain/scheduling.js';
+import { escapeHtml } from '../ui/escapeHtml.js';
 import { VOCAL_SLOT_CAPACITY } from '../domain/vocalBooking.js';
 import {
   fetchAllVocalSlots,
@@ -145,7 +146,7 @@ function renderContent() {
         html += '<table class="data-table"><thead><tr><th>#</th><th>Student</th><th>Grade</th></tr></thead><tbody>';
         attendees.forEach((a, i) => {
           const st = a.students;
-          html += `<tr><td>${i + 1}</td><td>${st?.first_name || ''} ${st?.last_name || ''}</td><td>${st?.grade || '—'}</td></tr>`;
+          html += `<tr><td>${i + 1}</td><td>${escapeHtml(st?.first_name || '')} ${escapeHtml(st?.last_name || '')}</td><td>${escapeHtml(st?.grade || '—')}</td></tr>`;
         });
         html += '</tbody></table>';
       }

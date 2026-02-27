@@ -5,6 +5,7 @@ import {
   setActiveContract,
 } from '../adapters/contracts.js';
 import { getNextVersionNumber } from '../domain/contracts.js';
+import { escapeHtml } from '../ui/escapeHtml.js';
 
 let contracts = [];
 
@@ -136,11 +137,6 @@ async function refreshPage() {
   }
 }
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML.replace(/\n/g, '<br>');
-}
 
 export function renderAdminContracts() {
   const container = document.createElement('div');

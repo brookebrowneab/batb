@@ -2,12 +2,7 @@ import { getAuthState } from '../auth.js';
 import { fetchActiveContract, fetchAcceptancesForStudent, submitAcceptance } from '../adapters/contracts.js';
 import { fetchStudentsByFamily } from '../adapters/students.js';
 import { validateAcceptanceInput, hasAcceptedContract } from '../domain/contracts.js';
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML.replace(/\n/g, '<br>');
-}
+import { escapeHtml } from '../ui/escapeHtml.js';
 
 async function loadData(userId) {
   const [contractResult, studentsResult] = await Promise.all([
@@ -36,7 +31,7 @@ function renderSigningForm(student, activeContract) {
     const acceptance = student.acceptances.find((a) => a.contract_id === activeContract.id);
     return `
       <div class="acceptance-status success-box">
-        <strong>Contract signed for ${student.first_name || 'this student'}.</strong>
+        <strong>Contract signed for ${escapeHtml(student.first_name || 'this student')}.</strong>
         <p>Student signature: ${escapeHtml(acceptance.student_typed_signature)}</p>
         <p>Parent signature: ${escapeHtml(acceptance.parent_typed_signature)}</p>
         <p>Signed: ${new Date(acceptance.created_at).toLocaleString()}</p>
@@ -46,7 +41,7 @@ function renderSigningForm(student, activeContract) {
 
   return `
     <form class="signing-form login-form" data-student-id="${student.id}" data-contract-id="${activeContract.id}">
-      <h3>Sign for ${student.first_name || 'Student'} ${student.last_name || ''}</h3>
+      <h3>Sign for ${escapeHtml(student.first_name || 'Student')} ${escapeHtml(student.last_name || '')}</h3>
       <label for="student-sig-${student.id}">Student Typed Signature</label>
       <input type="text" id="student-sig-${student.id}" required placeholder="Type student's full name" />
       <label for="parent-sig-${student.id}">Parent/Guardian Typed Signature</label>

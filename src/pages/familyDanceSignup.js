@@ -3,6 +3,7 @@ import { fetchStudentsByFamily } from '../adapters/students.js';
 import { fetchAllDanceSessions, fetchSignupCountsBySession, fetchDanceSignupForStudent, upsertDanceSignup, cancelDanceSignup } from '../adapters/danceSessions.js';
 import { checkDanceEligibility, isDanceLocked, checkSessionCapacity } from '../domain/danceSignup.js';
 import { formatTime, LOCK_TIME_DISPLAY } from '../domain/scheduling.js';
+import { escapeHtml } from '../ui/escapeHtml.js';
 
 export function renderFamilyDanceSignup() {
   const container = document.createElement('div');
@@ -69,7 +70,7 @@ function renderStudents(contentEl, students, sessions, counts, signups) {
 
       return `
         <div class="student-card" style="background:#fff;border:1px solid #dee2e6;margin-bottom:1rem">
-          <h3>${student.first_name || 'Unnamed'} ${student.last_name || 'Student'}</h3>
+          <h3>${escapeHtml(student.first_name || 'Unnamed')} ${escapeHtml(student.last_name || 'Student')}</h3>
           ${renderStudentStatus(eligibility, currentSession, locked)}
           ${eligibility.eligible ? renderSessionSelector(student, sessions, counts, currentSignup, now) : ''}
           <div class="form-message" id="dance-msg-${student.id}" aria-live="polite"></div>
@@ -99,7 +100,7 @@ function renderStudentStatus(eligibility, currentSession, locked) {
   if (currentSession) {
     return `
       <div class="success-box" style="margin:0.5rem 0">
-        <p>Signed up for: <strong>${currentSession.label || currentSession.audition_date}</strong>
+        <p>Signed up for: <strong>${escapeHtml(currentSession.label || currentSession.audition_date)}</strong>
         — ${formatTime(currentSession.start_time)} – ${formatTime(currentSession.end_time)}</p>
       </div>
     `;
@@ -137,7 +138,7 @@ function renderSessionSelector(student, sessions, counts, currentSignup, now) {
       html += `
         <div class="${cardClass}">
           <div class="session-info">
-            <strong>${session.label || `${formatTime(session.start_time)} – ${formatTime(session.end_time)}`}</strong>
+            <strong>${session.label ? escapeHtml(session.label) : `${formatTime(session.start_time)} – ${formatTime(session.end_time)}`}</strong>
             ${session.label ? `<br><span style="font-size:0.875rem;color:#6c757d">${formatTime(session.start_time)} – ${formatTime(session.end_time)}</span>` : ''}
             <br><span style="font-size:0.8rem;color:#6c757d">${spotsText}</span>
           </div>

@@ -79,6 +79,14 @@ Minimum required:
 - Avoid collecting unnecessary PII.
 - Ensure staff accounts are tightly controlled and reviewed.
 
+## Export Access Restrictions (Confirmed M9)
+- **Authorization**: Double-gated — orchestration layer calls `assertStaff()` (throws if not admin/director), and PDF/CSV generators also check `canExport(role)` (defense-in-depth).
+- **No public share links**: Structural tests verify no `getPublicUrl`, `publicUrl`, `shareLink`, or `share_link` in any export file.
+- **No family access**: No family page imports from `../exports/`, no `/family/export` route exists.
+- **Photo handling in exports**: Photos fetched via signed URLs (`getSignedPhotoUrl`) → converted to base64 data URLs for PDF embedding. PDFs contain no expiring URLs or external references.
+- **Client-side only**: All PDF/CSV generation happens in the browser. No server-side export endpoints. Files are created as Blobs and downloaded via ephemeral object URLs (immediately revoked).
+- **PDF footer**: Every page stamped "Generated [date] — Staff Only — Do Not Distribute".
+
 ## Security Test Checklist (Milestone Gate)
 - Verify family cannot access any other student by direct ID.
 - Verify staff-only endpoints cannot be accessed by anon/family.

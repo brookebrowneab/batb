@@ -217,8 +217,10 @@ The build plan (claude-build-plan.md) uses M0–M10. This review schedule omits 
 - Exports staff-auth only.
 **Rollback:** disable export endpoints/features.
 
-**Status: PARTIALLY COMPLETE (Rosters + Profiles done; PDF/CSV pending M9)**
-**Commit:** *(pending — build-plan M8)*
+**Status: COMPLETE**
+**Commits:**
+- f0754a4 — Milestone 8: Student profiles + evaluations + roster enhancements
+- *(pending)* — Milestone 9: PDF packs + CSV exports
 **Date built:** 2026-02-26
 **Evidence (Rosters + Profiles — M8 portion):**
 - [x] Router enhanced: query param support (`?id=xxx`) via `getQueryParams()` helper (src/router.js)
@@ -237,10 +239,24 @@ The build plan (claude-build-plan.md) uses M0–M10. This review schedule omits 
 - [x] Automated tests: studentProfile.test.js (34 cases: domain + structural)
 - [x] escapeHtml structural tests updated for new pages (269 total tests pass)
 - [x] Decision recorded: D-015 (include evaluations in MVP)
+**Evidence (PDF Packs + CSV Exports — M9 portion):**
+- [x] jspdf dependency installed for client-side PDF generation
+- [x] Domain: pure functions for CSV formatting, data grouping, auth validation (src/domain/exports.js)
+- [x] CSV export: blob download with `canExport()` check, UTF-8 BOM for Excel (src/exports/csvExport.js)
+- [x] PDF export: jspdf engine with photo embedding (base64 data URLs), student blocks with info/notes/blank lines, A4 format (src/exports/pdfExport.js)
+- [x] Orchestration: 6 async export functions, each calls `assertStaff()` first (src/exports/index.js)
+- [x] Export types: dance session PDF, vocal slot PDF, full track PDF, dance CSV, vocal CSV, callbacks CSV
+- [x] Photos fetched via signed URLs → embedded as base64 (no expiring URLs in PDFs)
+- [x] PDF footer: "Generated [date] — Staff Only — Do Not Distribute" on every page
+- [x] Defense-in-depth: double auth check (orchestration `assertStaff()` + generator `canExport()`)
+- [x] No public share links — verified structurally across all export files
+- [x] Export buttons on dance roster, vocal roster, and callbacks pages with disable/spinner/restore UX
+- [x] No family page imports from exports; no `/family/export` route
+- [x] Automated tests: exports.test.js (44 cases: domain unit tests + structural authorization tests)
+- [x] Security profile updated with export access restrictions section
+- [x] 313 total tests pass, 0 lint errors, build succeeds
 **Manual validation:** Pending user verification
-**Open items:**
-- [ ] PDF packs (M9 — build-plan M9)
-- [ ] CSV exports (M9 — build-plan M9)
+**Open items:** None
 
 ---
 

@@ -11,6 +11,7 @@ import {
   deleteVocalSlot,
   adminOverrideVocalBooking,
 } from '../adapters/vocalBookings.js';
+import { exportVocalSlotPdf, exportVocalRosterCsv } from '../exports/index.js';
 
 let slots = [];
 let roster = [];
@@ -54,6 +55,8 @@ function renderActions() {
 
   actionsEl.innerHTML = `
     <button class="btn-small" id="generate-slots-btn">Generate Slots from Config</button>
+    <button class="btn-small" id="export-vocal-pdf-btn">Export PDF</button>
+    <button class="btn-small btn-secondary" id="export-vocal-csv-btn">Export CSV</button>
     ${isAdmin(role) ? '<span style="margin-left:0.5rem;font-size:0.75rem;color:#6c757d">(Admin: you can delete slots and override bookings below)</span>' : ''}
   `;
 
@@ -82,6 +85,37 @@ function renderActions() {
     btn.disabled = false;
     btn.textContent = 'Generate Slots from Config';
     await loadAndRender();
+  });
+
+  document.getElementById('export-vocal-pdf-btn')?.addEventListener('click', async (e) => {
+    const btn = e.target;
+    const msgEl = document.getElementById('vocal-roster-msg');
+    btn.disabled = true;
+    btn.textContent = 'Generating PDF…';
+    if (msgEl) { msgEl.className = 'form-message'; msgEl.textContent = ''; }
+    try {
+      await exportVocalSlotPdf();
+      if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'PDF downloaded.'; }
+    } catch (err) {
+      if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
+    }
+    btn.disabled = false;
+    btn.textContent = 'Export PDF';
+  });
+
+  document.getElementById('export-vocal-csv-btn')?.addEventListener('click', async (e) => {
+    const btn = e.target;
+    const msgEl = document.getElementById('vocal-roster-msg');
+    btn.disabled = true;
+    btn.textContent = 'Exporting…';
+    try {
+      await exportVocalRosterCsv();
+      if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'CSV downloaded.'; }
+    } catch (err) {
+      if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
+    }
+    btn.disabled = false;
+    btn.textContent = 'Export CSV';
   });
 }
 

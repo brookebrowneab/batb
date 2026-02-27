@@ -13,8 +13,10 @@
  * - vocalBooking (eligibility, lock time, capacity, slot generation)
  * - callbacks (invite gating, notification templates)
  * - studentProfile (profile assembly, evaluation validation)
+ * - exports (CSV formatting, data grouping, auth validation)
  */
 export * from './danceSignup.js';
 export * from './vocalBooking.js';
 export * from './callbacks.js';
 export * from './studentProfile.js';
+export * from './exports.js';

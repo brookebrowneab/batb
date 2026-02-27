@@ -28,6 +28,7 @@ export default [
         location: 'readonly',
         import: 'readonly',
         crypto: 'readonly',
+        FileReader: 'readonly',
       },
     },
     rules: {

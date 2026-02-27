@@ -12,6 +12,7 @@ import {
   fetchNotificationHistory,
 } from '../adapters/callbacks.js';
 import { fetchAllConfigs } from '../adapters/scheduling.js';
+import { exportFullTrackPdf, exportCallbacksCsv } from '../exports/index.js';
 
 let students = [];
 let configs = [];
@@ -57,10 +58,43 @@ function renderActions() {
   actionsEl.innerHTML = `
     <p style="margin-bottom:0.5rem"><strong>${invitedCount}</strong> of <strong>${totalCount}</strong> students invited to callbacks.</p>
     <button class="btn-small" id="send-all-btn">Send Callback Notifications</button>
+    <button class="btn-small" id="export-callbacks-pdf-btn">Export Full Pack PDF</button>
+    <button class="btn-small btn-secondary" id="export-callbacks-csv-btn">Export CSV</button>
     <span style="margin-left:0.5rem;font-size:0.75rem;color:#6c757d">Sends to all invited students with a parent email on file (mock provider).</span>
   `;
 
   document.getElementById('send-all-btn')?.addEventListener('click', handleBatchSend);
+
+  document.getElementById('export-callbacks-pdf-btn')?.addEventListener('click', async (e) => {
+    const btn = e.target;
+    const msgEl = document.getElementById('callback-msg');
+    btn.disabled = true;
+    btn.textContent = 'Generating PDF…';
+    if (msgEl) { msgEl.className = 'form-message'; msgEl.textContent = ''; }
+    try {
+      await exportFullTrackPdf();
+      if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'PDF downloaded.'; }
+    } catch (err) {
+      if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
+    }
+    btn.disabled = false;
+    btn.textContent = 'Export Full Pack PDF';
+  });
+
+  document.getElementById('export-callbacks-csv-btn')?.addEventListener('click', async (e) => {
+    const btn = e.target;
+    const msgEl = document.getElementById('callback-msg');
+    btn.disabled = true;
+    btn.textContent = 'Exporting…';
+    try {
+      await exportCallbacksCsv();
+      if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'CSV downloaded.'; }
+    } catch (err) {
+      if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
+    }
+    btn.disabled = false;
+    btn.textContent = 'Export CSV';
+  });
 }
 
 async function handleBatchSend() {

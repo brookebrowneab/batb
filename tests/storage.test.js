@@ -49,3 +49,54 @@ describe('Storage security conventions', () => {
     expect(folder).toBe(userId);
   });
 });
+
+/**
+ * Cross-family photo access prevention.
+ *
+ * Supabase RLS enforces: (storage.foldername(name))[1] = auth.uid()::text
+ * This means the first folder segment of the path must equal the requesting
+ * user's auth UID. These tests verify the path structure guarantees that
+ * family A's photos are never stored under family B's folder, and that
+ * a path from one family can be identified as inaccessible to another.
+ */
+describe('Cross-family photo access prevention', () => {
+  /**
+   * Mirrors the RLS ownership check from 00005_storage_policies.sql:
+   *   (storage.foldername(name))[1] = auth.uid()::text
+   */
+  function pathBelongsToUser(path, userId) {
+    return path.split('/')[0] === userId;
+  }
+
+  it('family A photo path is NOT accessible to family B', () => {
+    const familyA = 'family-a-uid';
+    const familyB = 'family-b-uid';
+    const pathA = generatePhotoPath(familyA, 'photo.jpg');
+
+    // Family A owns this path
+    expect(pathBelongsToUser(pathA, familyA)).toBe(true);
+    // Family B does NOT — RLS would reject the request
+    expect(pathBelongsToUser(pathA, familyB)).toBe(false);
+  });
+
+  it('two families always get paths in separate folders', () => {
+    const familyA = 'family-a-uid';
+    const familyB = 'family-b-uid';
+    const pathA = generatePhotoPath(familyA, 'pic.jpg');
+    const pathB = generatePhotoPath(familyB, 'pic.jpg');
+
+    expect(pathA.split('/')[0]).toBe(familyA);
+    expect(pathB.split('/')[0]).toBe(familyB);
+    expect(pathA.split('/')[0]).not.toBe(pathB.split('/')[0]);
+  });
+
+  it('no path generation can place a photo outside the owner folder', () => {
+    const userId = 'owner-uid';
+    // Try various filenames including path traversal attempts
+    const names = ['photo.jpg', '../other-uid/hack.jpg', 'a/b/c.png', '../../etc.jpg'];
+    for (const name of names) {
+      const path = generatePhotoPath(userId, name);
+      expect(path.split('/')[0]).toBe(userId);
+    }
+  });
+});

@@ -119,3 +119,41 @@
 - RLS policies grant INSERT/UPDATE to all staff, DELETE to admin only.
 - SELECT is open to all authenticated users (families see dates/times).
 - All config edits are audited via updated_at and updated_by_staff_user_id.
+
+---
+
+## D-011 — Separate Tables for Dance and Vocal Sign-Ups
+**Date:** 2026-02-26
+**Decision:** Use dedicated `dance_signups` and (future) `vocal_bookings` tables instead of the unified `Booking` table with `track` enum described in data-architecture.md.
+
+**Rationale:**
+- Simpler unique constraint: `UNIQUE(student_id)` on each table vs. partial unique index.
+- Cleaner RLS policies: no track-conditional logic needed.
+- Self-contained RPCs per track — dance and vocal have different constraints (dance = optional capacity, vocal = cap 7 + transactional concurrency).
+- Each table's RPC handles its own lock-time, eligibility, and capacity checks independently.
+
+**Trade-offs:**
+- Two tables instead of one; slightly more schema surface area.
+- Querying "all bookings for a student" requires a UNION or two queries.
+
+**Implications:**
+- `dance_signups` table with `UNIQUE(student_id)` — one dance sign-up per student.
+- Vocal (M6) will use a separate `vocal_bookings` table with its own RPC.
+- Roster views query each table independently (consistent with track-separated roster design).
+
+---
+
+## D-012 — Dance Sign-Up Mutation via RPCs Only
+**Date:** 2026-02-26
+**Decision:** Family dance sign-up mutations (create, update, cancel) go through Supabase SECURITY DEFINER RPCs. No direct INSERT/UPDATE/DELETE RLS policies exist on `dance_signups` for families.
+
+**Rationale:**
+- Lock time enforcement requires checking `now()` against the audition date from a joined `dance_sessions` row — awkward in an RLS policy.
+- RPCs can atomically verify ownership, registration completeness, lock time, and capacity in a single transaction.
+- Admin override uses a separate RPC that skips lock time, making the authorization boundary explicit and auditable.
+
+**Implications:**
+- `upsert_dance_signup` RPC for family sign-up/change.
+- `delete_dance_signup` RPC for family cancellation.
+- `admin_update_dance_signup` RPC for admin override (no lock time check).
+- This pattern will be reused for Vocal bookings in M6.

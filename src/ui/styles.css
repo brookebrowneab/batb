@@ -310,3 +310,44 @@ summary {
   color: #0d6efd;
   font-weight: 500;
 }
+
+/* Dance session selection cards */
+.session-card {
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+}
+
+.session-card.selected {
+  border-color: #198754;
+  background: #d1e7dd;
+}
+
+.session-card.full {
+  opacity: 0.6;
+  background: #f8f9fa;
+}
+
+.session-card .session-info {
+  flex: 1;
+}
+
+.session-card .session-actions {
+  margin-left: 1rem;
+}
+
+/* Locked state indicator */
+.locked-notice {
+  background: #f8d7da;
+  border: 1px solid #f5c2c7;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  color: #842029;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}

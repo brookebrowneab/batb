@@ -13,6 +13,8 @@ import { renderFamilyContract } from './pages/familyContract.js';
 import { renderFamilyRegistration } from './pages/familyRegistration.js';
 import { renderStaffScheduling } from './pages/staffScheduling.js';
 import { renderFamilySchedule } from './pages/familySchedule.js';
+import { renderFamilyDanceSignup } from './pages/familyDanceSignup.js';
+import { renderStaffDanceRoster } from './pages/staffDanceRoster.js';
 
 function renderNav() {
   const { session, role } = getAuthState();
@@ -80,7 +82,9 @@ async function init() {
   addRoute('/family/contract', renderFamilyContract);
   addRoute('/family/register', renderFamilyRegistration);
   addRoute('/family/schedule', renderFamilySchedule);
+  addRoute('/family/dance', renderFamilyDanceSignup);
   addRoute('/staff/scheduling', renderStaffScheduling);
+  addRoute('/staff/dance-roster', renderStaffDanceRoster);
   setNotFound(renderNotFound);
 
   // Set auth guard

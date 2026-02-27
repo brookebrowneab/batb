@@ -4,9 +4,11 @@
  * All domain functions must be stateless and free of side effects.
  * No imports from adapters, UI, or Supabase here.
  *
- * Submodules will be added per milestone:
- * - registration (gating logic)
+ * Submodules:
+ * - roles (role parsing, route guards)
  * - contracts (version rules)
- * - booking (capacity, uniqueness, lock time)
- * - callbacks (invite gating)
+ * - registration (gating logic)
+ * - scheduling (window validation, lock time constants)
+ * - danceSignup (eligibility, lock time, capacity)
  */
+export * from './danceSignup.js';

@@ -10,10 +10,8 @@ export function renderStaffDashboard() {
       <h2>Management</h2>
       <ul class="admin-links">
         <li><a href="#/staff/scheduling">Scheduling Configuration</a></li>
+        <li><a href="#/staff/dance-roster">Dance Roster</a></li>
       </ul>
-      <div class="placeholder-notice">
-        Rosters and student profiles will be added in future milestones.
-      </div>
     </div>
   `;
 }

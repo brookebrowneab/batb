@@ -10,10 +10,8 @@ export function renderAdminDashboard() {
       <h2>Management</h2>
       <ul class="admin-links">
         <li><a href="#/admin/contracts">Contract Management</a></li>
+        <li><a href="#/staff/dance-roster">Dance Roster & Overrides</a></li>
       </ul>
-      <div class="placeholder-notice">
-        System configuration and overrides will be added in future milestones.
-      </div>
     </div>
   `;
 }

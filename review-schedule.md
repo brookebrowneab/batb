@@ -186,7 +186,26 @@ The build plan (claude-build-plan.md) uses M0–M10. This review schedule omits 
 - Email notification template and audit entries.
 **Rollback:** disable notification job; revert invite flags if necessary.
 
-**Status: NOT STARTED**
+**Status: COMPLETE**
+**Commit:** *(pending — build-plan M7)*
+**Date built:** 2026-02-26
+**Evidence:**
+- [x] toggle_callback_invite RPC: SECURITY DEFINER, staff-only (migration 00010)
+- [x] notification_sends audit table: append-only, staff RLS (migration 00010)
+- [x] log_notification_send RPC: staff-only audit logging (migration 00010)
+- [x] Domain logic: isCallbackInvited, getCallbackVisibility, generateCallbackNotificationContent, validateNotificationRecipient (src/domain/callbacks.js)
+- [x] Adapter: toggleCallbackInvite, fetchAllStudentsForCallbacks, logNotificationSend, fetchNotificationHistory (src/adapters/callbacks.js)
+- [x] Staff callbacks management page at /staff/callbacks (src/pages/staffCallbacks.js)
+- [x] Family schedule gated: callback times visible only to invited families (src/pages/familySchedule.js)
+- [x] Family dashboard shows callback invite status on student cards
+- [x] Dashboard links: staff, admin
+- [x] Mock email provider (console.log + audit log)
+- [x] No callback booking/sign-up records created — verified structurally across all migrations
+- [x] Automated tests: callbacks.test.js (38 cases: domain + structural + no-booking guarantee)
+- [x] Decisions recorded: D-013 (invite toggle via RPC), D-014 (mock email provider)
+**Manual validation:** Pending user verification
+**Open items:**
+- [ ] Replace mock email provider with real provider (Resend, SendGrid, etc.) — deferred to hardening
 
 ---
 

@@ -17,6 +17,7 @@ import { renderFamilyDanceSignup } from './pages/familyDanceSignup.js';
 import { renderStaffDanceRoster } from './pages/staffDanceRoster.js';
 import { renderFamilyVocalBooking } from './pages/familyVocalBooking.js';
 import { renderStaffVocalRoster } from './pages/staffVocalRoster.js';
+import { renderStaffCallbacks } from './pages/staffCallbacks.js';
 
 function renderNav() {
   const { session, role } = getAuthState();
@@ -89,6 +90,7 @@ async function init() {
   addRoute('/staff/scheduling', renderStaffScheduling);
   addRoute('/staff/dance-roster', renderStaffDanceRoster);
   addRoute('/staff/vocal-roster', renderStaffVocalRoster);
+  addRoute('/staff/callbacks', renderStaffCallbacks);
   setNotFound(renderNotFound);
 
   // Set auth guard

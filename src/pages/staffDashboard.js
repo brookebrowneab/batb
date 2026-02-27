@@ -13,6 +13,7 @@ export function renderStaffDashboard() {
         <li><a href="#/staff/scheduling">Scheduling Configuration</a></li>
         <li><a href="#/staff/dance-roster">Dance Roster</a></li>
         <li><a href="#/staff/vocal-roster">Vocal Roster</a></li>
+        <li><a href="#/staff/callbacks">Callback Management</a></li>
       </ul>
     </div>
   `;

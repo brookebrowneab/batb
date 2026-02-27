@@ -157,3 +157,33 @@
 - `delete_dance_signup` RPC for family cancellation.
 - `admin_update_dance_signup` RPC for admin override (no lock time check).
 - This pattern will be reused for Vocal bookings in M6.
+
+---
+
+## D-013 — Callback Invite Toggle via RPC
+**Date:** 2026-02-26
+**Decision:** Directors toggle `callback_invited` via a SECURITY DEFINER RPC (`toggle_callback_invite`) rather than direct table updates.
+
+**Rationale:**
+- Students table RLS does not grant UPDATE to directors (only families own-row and admins any-row).
+- Consistent with D-012 (staff mutations via RPCs).
+- RPC enforces staff check and sets audit fields atomically.
+
+**Implications:**
+- Adapter calls `supabase.rpc('toggle_callback_invite', ...)` instead of `supabase.from('students').update(...)`.
+- Same pattern applies to any future staff-initiated student field updates.
+
+---
+
+## D-014 — Mock Email Provider for Notifications
+**Date:** 2026-02-26
+**Decision:** MVP uses a mock email provider (console.log) with full audit logging in `notification_sends` table. Real email provider to be added in hardening.
+
+**Rationale:**
+- No email infrastructure exists in the codebase.
+- Audit logging is the critical compliance requirement; actual delivery can follow.
+- Mock allows full workflow testing without third-party dependencies.
+
+**Implications:**
+- `notification_sends` table captures who sent what to whom and when.
+- Replacing mock with real provider requires only changing the send step in the staff UI; the audit logging is already in place.

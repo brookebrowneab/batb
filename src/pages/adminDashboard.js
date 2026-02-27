@@ -13,6 +13,7 @@ export function renderAdminDashboard() {
         <li><a href="#/admin/contracts">Contract Management</a></li>
         <li><a href="#/staff/dance-roster">Dance Roster & Overrides</a></li>
         <li><a href="#/staff/vocal-roster">Vocal Roster & Overrides</a></li>
+        <li><a href="#/staff/callbacks">Callback Management</a></li>
       </ul>
     </div>
   `;

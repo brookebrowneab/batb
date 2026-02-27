@@ -11,6 +11,8 @@
  * - scheduling (window validation, lock time constants)
  * - danceSignup (eligibility, lock time, capacity)
  * - vocalBooking (eligibility, lock time, capacity, slot generation)
+ * - callbacks (invite gating, notification templates)
  */
 export * from './danceSignup.js';
 export * from './vocalBooking.js';
+export * from './callbacks.js';

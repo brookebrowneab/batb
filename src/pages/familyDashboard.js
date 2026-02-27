@@ -42,6 +42,7 @@ function renderStudentCard(student) {
             <ul>${registrationStatus.missing.map((m) => `<li>${m}</li>`).join('')}</ul>
           `
       }
+      ${student.callback_invited ? '<p style="color:#28a745"><strong>Invited to Callbacks</strong></p>' : ''}
     </div>
   `;
 }

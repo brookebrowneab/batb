@@ -11,6 +11,7 @@ export function renderAdminDashboard() {
       <ul class="admin-links">
         <li><a href="#/admin/contracts">Contract Management</a></li>
         <li><a href="#/staff/dance-roster">Dance Roster & Overrides</a></li>
+        <li><a href="#/staff/vocal-roster">Vocal Roster & Overrides</a></li>
       </ul>
     </div>
   `;

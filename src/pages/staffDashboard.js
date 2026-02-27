@@ -11,6 +11,7 @@ export function renderStaffDashboard() {
       <ul class="admin-links">
         <li><a href="#/staff/scheduling">Scheduling Configuration</a></li>
         <li><a href="#/staff/dance-roster">Dance Roster</a></li>
+        <li><a href="#/staff/vocal-roster">Vocal Roster</a></li>
       </ul>
     </div>
   `;

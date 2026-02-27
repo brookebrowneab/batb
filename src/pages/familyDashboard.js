@@ -58,6 +58,7 @@ export function renderFamilyDashboard() {
       <a href="#/family/contract">View & Sign Contract</a>
       <a href="#/family/schedule">Audition Schedule</a>
       <a href="#/family/dance">Dance Sign-Up</a>
+      <a href="#/family/vocal">Vocal Booking</a>
     </nav>
     <h2>Your Students</h2>
     <div id="students-list"><p>Loading…</p></div>

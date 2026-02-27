@@ -10,5 +10,7 @@
  * - registration (gating logic)
  * - scheduling (window validation, lock time constants)
  * - danceSignup (eligibility, lock time, capacity)
+ * - vocalBooking (eligibility, lock time, capacity, slot generation)
  */
 export * from './danceSignup.js';
+export * from './vocalBooking.js';

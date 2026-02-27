@@ -154,7 +154,28 @@ The build plan (claude-build-plan.md) uses M0–M10. This review schedule omits 
 - Reschedule works until 2:00 PM day-of; lock enforced server-side.
 **Rollback:** revert RPC and constraints; restore bookings if needed.
 
-**Status: NOT STARTED**
+**Status: COMPLETE**
+**Commit:** *(pending — build-plan M6)*
+**Date built:** 2026-02-26
+**Evidence:**
+- [x] audition_slots + vocal_bookings tables with RLS (migration 00009)
+- [x] Unique constraint: one booking per student (vocal_bookings_student_idx)
+- [x] Capacity hard cap 7 enforced in book_vocal_slot RPC with SELECT FOR UPDATE
+- [x] Atomic reschedule via reschedule_vocal_slot RPC (release old + claim new in one txn)
+- [x] Lock time enforced server-side in all family RPCs (2:00 PM cutoff)
+- [x] Admin override RPC: admin_override_vocal_booking (no lock/capacity check)
+- [x] Family cancellation RPC: cancel_vocal_booking (ownership + lock time verified)
+- [x] 15-minute slot generation from vocal window config (domain + adapter)
+- [x] Family vocal booking page at /family/vocal (src/pages/familyVocalBooking.js)
+- [x] Staff vocal roster at /staff/vocal-roster (src/pages/staffVocalRoster.js)
+- [x] Admin override UI embedded in staff roster (visible to admins only)
+- [x] Dashboard links: family, staff, and admin
+- [x] Domain logic: eligibility, lock time, capacity, slot generation (src/domain/vocalBooking.js)
+- [x] Automated tests: vocalBooking.test.js (domain + structural + transactional safety)
+- [x] Concurrency safety: SELECT FOR UPDATE serializes race for final seat (verified structurally; manual concurrency test pending)
+**Manual validation:** Pending user verification
+**Open items:**
+- [ ] Live concurrency test (two browsers racing for last seat) requires running Supabase instance
 
 ---
 

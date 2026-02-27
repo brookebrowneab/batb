@@ -4,10 +4,14 @@ import {
   createContract,
   setActiveContract,
 } from '../adapters/contracts.js';
+import { logAuditEntry } from '../adapters/auditLog.js';
 import { getNextVersionNumber } from '../domain/contracts.js';
-import { escapeHtml } from '../ui/escapeHtml.js';
+import { renderContractText } from '../ui/sanitizeHtml.js';
+import Quill from 'quill';
+import 'quill/dist/quill.snow.css';
 
 let contracts = [];
+let quillEditor = null;
 
 async function loadContracts() {
   const { data, error } = await fetchAllContracts();
@@ -79,7 +83,7 @@ function bindEvents() {
         const preview = document.getElementById('contract-preview');
         preview.innerHTML = `
           <h3>Contract v${contract.version_number} Preview</h3>
-          <div class="contract-text">${escapeHtml(contract.text_snapshot)}</div>
+          <div class="contract-text">${renderContractText(contract.text_snapshot)}</div>
         `;
       }
     });
@@ -90,11 +94,12 @@ function bindEvents() {
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const textarea = document.getElementById('contract-text-input');
-      const text = textarea.value.trim();
+      const text = quillEditor ? quillEditor.root.innerHTML : '';
       const msg = document.getElementById('create-contract-message');
 
-      if (!text) {
+      // Check if editor is effectively empty (Quill uses <p><br></p> for empty)
+      const plainText = quillEditor ? quillEditor.getText().trim() : '';
+      if (!plainText) {
         msg.textContent = 'Contract text is required.';
         msg.className = 'form-message error';
         return;
@@ -108,7 +113,7 @@ function bindEvents() {
       btn.textContent = 'Creating…';
       msg.textContent = '';
 
-      const { error } = await createContract(nextVersion, text, user.id);
+      const { data: contractData, error } = await createContract(nextVersion, text, user.id);
 
       if (error) {
         msg.textContent = 'Failed to create contract: ' + error.message;
@@ -118,7 +123,11 @@ function bindEvents() {
         return;
       }
 
-      textarea.value = '';
+      if (contractData) {
+        logAuditEntry('create_contract', 'contracts', contractData.id, { version_number: nextVersion });
+      }
+
+      if (quillEditor) quillEditor.setText('');
       msg.textContent = `Contract v${nextVersion} created successfully.`;
       msg.className = 'form-message success';
       btn.disabled = false;
@@ -151,16 +160,33 @@ export function renderAdminContracts() {
     <div id="contract-preview" class="contract-preview-box"></div>
 
     <h2>Create New Version</h2>
-    <form id="create-contract-form" class="login-form">
-      <label for="contract-text-input">Contract Text</label>
-      <textarea id="contract-text-input" rows="10" required
-        placeholder="Enter the full contract text here…"></textarea>
+    <form id="create-contract-form" class="login-form" style="max-width:none">
+      <label>Contract Text</label>
+      <div id="quill-editor"></div>
       <button type="submit">Create Contract Version</button>
       <div id="create-contract-message" class="form-message" aria-live="polite"></div>
     </form>
   `;
 
   setTimeout(async () => {
+    // Initialize Quill
+    const editorEl = document.getElementById('quill-editor');
+    if (editorEl) {
+      quillEditor = new Quill(editorEl, {
+        theme: 'snow',
+        modules: {
+          toolbar: [
+            [{ header: [1, 2, 3, 4, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ list: 'ordered' }, { list: 'bullet' }],
+            ['blockquote', 'link'],
+            ['clean'],
+          ],
+        },
+        placeholder: 'Enter the contract text here…',
+      });
+    }
+
     await loadContracts();
     const listEl = document.getElementById('contract-list');
     if (listEl) {

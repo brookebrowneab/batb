@@ -1,7 +1,7 @@
 import { getAuthState } from '../auth.js';
 import { fetchAllConfigs } from '../adapters/scheduling.js';
 import { fetchStudentsByFamily } from '../adapters/students.js';
-import { formatTime, LOCK_TIME_DISPLAY } from '../domain/scheduling.js';
+import { formatTime, formatDate, LOCK_TIME_DISPLAY } from '../domain/scheduling.js';
 import { isCallbackInvited } from '../domain/callbacks.js';
 
 export function renderFamilySchedule() {
@@ -39,7 +39,7 @@ export function renderFamilySchedule() {
         .map(
           (c) => `
         <div class="student-card" style="background:#f8f9fa;border:1px solid #dee2e6">
-          <h3>${c.audition_date}</h3>
+          <h3>${formatDate(c.audition_date)}</h3>
           ${c.dance_start_time ? `<p><strong>Dance:</strong> ${formatTime(c.dance_start_time)} – ${formatTime(c.dance_end_time)}</p>` : ''}
           ${c.vocal_start_time ? `<p><strong>Vocal:</strong> ${formatTime(c.vocal_start_time)} – ${formatTime(c.vocal_end_time)}</p>` : ''}
           ${anyInvited && c.callback_start_time ? `<p><strong>Callbacks:</strong> ${formatTime(c.callback_start_time)} – ${formatTime(c.callback_end_time)}</p>` : ''}

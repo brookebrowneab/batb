@@ -3,6 +3,7 @@ import { fetchActiveContract, fetchAcceptancesForStudent, submitAcceptance } fro
 import { fetchStudentsByFamily } from '../adapters/students.js';
 import { validateAcceptanceInput, hasAcceptedContract } from '../domain/contracts.js';
 import { escapeHtml } from '../ui/escapeHtml.js';
+import { renderContractText } from '../ui/sanitizeHtml.js';
 
 async function loadData(userId) {
   const [contractResult, studentsResult] = await Promise.all([
@@ -135,7 +136,7 @@ export function renderFamilyContract() {
 
     contentEl.innerHTML = `
       <h2>Contract (v${activeContract.version_number})</h2>
-      <div class="contract-text">${escapeHtml(activeContract.text_snapshot)}</div>
+      <div class="contract-text">${renderContractText(activeContract.text_snapshot)}</div>
       <hr>
       <h2>Signatures</h2>
       ${students.map((s) => renderSigningForm(s, activeContract)).join('')}

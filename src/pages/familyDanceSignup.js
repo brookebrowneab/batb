@@ -2,7 +2,7 @@ import { getAuthState } from '../auth.js';
 import { fetchStudentsByFamily } from '../adapters/students.js';
 import { fetchAllDanceSessions, fetchSignupCountsBySession, fetchDanceSignupForStudent, upsertDanceSignup, cancelDanceSignup } from '../adapters/danceSessions.js';
 import { checkDanceEligibility, isDanceLocked, checkSessionCapacity } from '../domain/danceSignup.js';
-import { formatTime, LOCK_TIME_DISPLAY } from '../domain/scheduling.js';
+import { formatTime, formatDate, LOCK_TIME_DISPLAY } from '../domain/scheduling.js';
 import { escapeHtml } from '../ui/escapeHtml.js';
 
 export function renderFamilyDanceSignup() {
@@ -100,7 +100,7 @@ function renderStudentStatus(eligibility, currentSession, locked) {
   if (currentSession) {
     return `
       <div class="success-box" style="margin:0.5rem 0">
-        <p>Signed up for: <strong>${escapeHtml(currentSession.label || currentSession.audition_date)}</strong>
+        <p>Signed up for: <strong>${escapeHtml(currentSession.label || formatDate(currentSession.audition_date))}</strong>
         — ${formatTime(currentSession.start_time)} – ${formatTime(currentSession.end_time)}</p>
       </div>
     `;
@@ -121,7 +121,7 @@ function renderSessionSelector(student, sessions, counts, currentSignup, now) {
   let html = '';
   for (const [date, dateSessions] of Object.entries(byDate)) {
     const locked = isDanceLocked(date, now);
-    html += `<h4 style="margin-top:0.75rem">${date}${locked ? ' <span style="color:#dc3545;font-size:0.75rem">(Locked)</span>' : ''}</h4>`;
+    html += `<h4 style="margin-top:0.75rem">${formatDate(date)}${locked ? ' <span style="color:#dc3545;font-size:0.75rem">(Locked)</span>' : ''}</h4>`;
 
     dateSessions.forEach((session) => {
       const count = counts[session.id] || 0;
@@ -186,6 +186,7 @@ function bindSignupEvents(contentEl, students, sessions, counts, signups) {
 
   contentEl.querySelectorAll('.cancel-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
+      if (!window.confirm('Cancel this dance sign-up? You may lose your spot.')) return;
       const studentId = btn.dataset.student;
       const msgEl = document.getElementById(`dance-msg-${studentId}`);
 

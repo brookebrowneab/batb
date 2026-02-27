@@ -70,6 +70,21 @@ export function formatTime(time) {
 }
 
 /**
+ * Format a YYYY-MM-DD date string for human display (e.g. "Sat, Mar 15").
+ * @param {string|null} dateStr - YYYY-MM-DD
+ * @returns {string}
+ */
+export function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  // Parse as local date (avoid timezone shift by splitting manually)
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
+  const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.getMonth()];
+  return `${dayName}, ${monthName} ${date.getDate()}`;
+}
+
+/**
  * Lock time policy — fixed at 2:00 PM local on audition day.
  * This is a display constant; enforcement happens server-side in booking RPCs.
  */

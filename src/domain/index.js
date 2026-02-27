@@ -20,3 +20,4 @@ export * from './vocalBooking.js';
 export * from './callbacks.js';
 export * from './studentProfile.js';
 export * from './exports.js';
+export * from './emailValidation.js';

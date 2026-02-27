@@ -28,6 +28,17 @@ export async function signInWithPassword(email, password) {
 }
 
 /**
+ * Create a new account with email + password.
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<{data: object|null, error: Error|null}>}
+ */
+export async function signUpWithPassword(email, password) {
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  return { data, error };
+}
+
+/**
  * Sign out the current user.
  * @returns {Promise<{error: Error|null}>}
  */

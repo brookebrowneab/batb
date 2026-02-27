@@ -17,7 +17,6 @@ const pagesWithUserData = [
   'staffVocalRoster.js',
   'staffCallbacks.js',
   'staffStudentProfile.js',
-  'adminContracts.js',
   'adminDashboard.js',
   'staffDashboard.js',
 ];

@@ -1,5 +1,5 @@
 import { signInWithPassword } from '../adapters/auth.js';
-import { navigate } from '../router.js';
+import { validateLoginEmail } from '../domain/emailValidation.js';
 
 export function renderStaffLogin() {
   const container = document.createElement('div');
@@ -29,6 +29,13 @@ export function renderStaffLogin() {
 
       if (!email || !password) return;
 
+      const validation = validateLoginEmail(email);
+      if (!validation.valid) {
+        msg.textContent = validation.error;
+        msg.className = 'form-message error';
+        return;
+      }
+
       btn.disabled = true;
       btn.textContent = 'Signing in…';
       msg.textContent = '';
@@ -39,12 +46,14 @@ export function renderStaffLogin() {
       if (error) {
         msg.textContent = 'Invalid credentials. Please try again.';
         msg.className = 'form-message error';
-      } else {
-        navigate('/staff');
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
         return;
       }
-      btn.disabled = false;
-      btn.textContent = 'Sign In';
+
+      // Full reload — initAuth on page load will pick up the session and role
+      window.location.hash = '#/admin';
+      window.location.reload();
     });
   }, 0);
 

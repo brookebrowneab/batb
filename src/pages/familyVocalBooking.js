@@ -9,7 +9,7 @@ import {
   cancelVocalBooking,
 } from '../adapters/vocalBookings.js';
 import { checkVocalEligibility, isVocalLocked, checkSlotCapacity, VOCAL_SLOT_CAPACITY } from '../domain/vocalBooking.js';
-import { formatTime, LOCK_TIME_DISPLAY } from '../domain/scheduling.js';
+import { formatTime, formatDate, LOCK_TIME_DISPLAY } from '../domain/scheduling.js';
 import { escapeHtml } from '../ui/escapeHtml.js';
 
 export function renderFamilyVocalBooking() {
@@ -106,7 +106,7 @@ function renderStudentStatus(eligibility, currentSlot, locked) {
   if (currentSlot) {
     return `
       <div class="success-box" style="margin:0.5rem 0">
-        <p>Booked: <strong>${currentSlot.audition_date}</strong>
+        <p>Booked: <strong>${formatDate(currentSlot.audition_date)}</strong>
         — ${formatTime(currentSlot.start_time)} – ${formatTime(currentSlot.end_time)}</p>
       </div>
     `;
@@ -128,7 +128,7 @@ function renderSlotSelector(student, slots, counts, currentBooking, now) {
   let html = '';
   for (const [date, dateSlots] of Object.entries(byDate)) {
     const locked = isVocalLocked(date, now);
-    html += `<h4 style="margin-top:0.75rem">${date}${locked ? ' <span style="color:#dc3545;font-size:0.75rem">(Locked)</span>' : ''}</h4>`;
+    html += `<h4 style="margin-top:0.75rem">${formatDate(date)}${locked ? ' <span style="color:#dc3545;font-size:0.75rem">(Locked)</span>' : ''}</h4>`;
 
     dateSlots.forEach((slot) => {
       const count = counts[slot.id] || 0;
@@ -211,6 +211,7 @@ function bindBookingEvents(contentEl, students, slots, counts, bookings) {
   // Cancel buttons
   contentEl.querySelectorAll('.cancel-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
+      if (!window.confirm('Cancel this vocal booking? You may lose your spot.')) return;
       const studentId = btn.dataset.student;
       const msgEl = document.getElementById(`vocal-msg-${studentId}`);
 

@@ -1,6 +1,7 @@
 import { getAuthState } from '../auth.js';
 import { fetchAllConfigs, createConfig, updateConfig, deleteConfig } from '../adapters/scheduling.js';
-import { validateWindowConfig, formatTime, LOCK_TIME_DISPLAY } from '../domain/scheduling.js';
+import { logAuditEntry } from '../adapters/auditLog.js';
+import { validateWindowConfig, formatTime, formatDate, LOCK_TIME_DISPLAY } from '../domain/scheduling.js';
 import { isAdmin } from '../domain/roles.js';
 
 let configs = [];
@@ -21,6 +22,7 @@ function renderConfigTable() {
   }
 
   return `
+    <div class="table-responsive">
     <table class="data-table">
       <thead>
         <tr>
@@ -37,7 +39,7 @@ function renderConfigTable() {
           .map(
             (c) => `
           <tr>
-            <td>${c.audition_date}</td>
+            <td>${formatDate(c.audition_date)}</td>
             <td>${formatTime(c.dance_start_time)} – ${formatTime(c.dance_end_time)}</td>
             <td>${formatTime(c.vocal_start_time)} – ${formatTime(c.vocal_end_time)}</td>
             <td>${formatTime(c.callback_start_time)} – ${formatTime(c.callback_end_time)}</td>
@@ -51,6 +53,7 @@ function renderConfigTable() {
           .join('')}
       </tbody>
     </table>
+    </div>
     <p class="lock-time-notice">Lock time: ${LOCK_TIME_DISPLAY} (server-enforced, admin override only)</p>
   `;
 }
@@ -183,6 +186,13 @@ function bindFormSubmit(refreshFn) {
       btn.disabled = false;
       btn.textContent = isEdit ? 'Update Date' : 'Add Date';
       return;
+    }
+
+    // Audit log
+    if (isEdit) {
+      logAuditEntry('update_config', 'audition_window_config', configIdEl.value, fields);
+    } else if (result.data) {
+      logAuditEntry('create_config', 'audition_window_config', result.data.id, fields);
     }
 
     msg.textContent = isEdit ? 'Updated!' : 'Added!';

@@ -1,6 +1,6 @@
 import { getAuthState } from '../auth.js';
 import { escapeHtml } from '../ui/escapeHtml.js';
-import { formatTime } from '../domain/scheduling.js';
+import { formatTime, formatDate } from '../domain/scheduling.js';
 import { assembleProfileSummary, validateEvaluationInput } from '../domain/studentProfile.js';
 import { getQueryParams } from '../router.js';
 import { fetchStudentForStaff } from '../adapters/students.js';
@@ -126,7 +126,7 @@ function renderParticipation() {
   // Dance
   if (profile.dance && profile.dance.dance_sessions) {
     const ds = profile.dance.dance_sessions;
-    html += `<tr><td>Dance</td><td style="color:#28a745">Signed Up</td><td>${escapeHtml(ds.audition_date || '')} ${formatTime(ds.start_time)} – ${formatTime(ds.end_time)}${ds.label ? ' (' + escapeHtml(ds.label) + ')' : ''}</td></tr>`;
+    html += `<tr><td>Dance</td><td style="color:#28a745">Signed Up</td><td>${formatDate(ds.audition_date)} ${formatTime(ds.start_time)} – ${formatTime(ds.end_time)}${ds.label ? ' (' + escapeHtml(ds.label) + ')' : ''}</td></tr>`;
   } else {
     html += '<tr><td>Dance</td><td style="color:#6c757d">Not signed up</td><td>—</td></tr>';
   }
@@ -134,7 +134,7 @@ function renderParticipation() {
   // Vocal
   if (profile.vocal && profile.vocal.audition_slots) {
     const vs = profile.vocal.audition_slots;
-    html += `<tr><td>Vocal</td><td style="color:#28a745">Booked</td><td>${escapeHtml(vs.audition_date || '')} ${formatTime(vs.start_time)} – ${formatTime(vs.end_time)}</td></tr>`;
+    html += `<tr><td>Vocal</td><td style="color:#28a745">Booked</td><td>${formatDate(vs.audition_date)} ${formatTime(vs.start_time)} – ${formatTime(vs.end_time)}</td></tr>`;
   } else {
     html += '<tr><td>Vocal</td><td style="color:#6c757d">Not booked</td><td>—</td></tr>';
   }

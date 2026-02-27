@@ -1,6 +1,6 @@
 import { getAuthState } from '../auth.js';
 import { isAdmin } from '../domain/roles.js';
-import { formatTime } from '../domain/scheduling.js';
+import { formatTime, formatDate } from '../domain/scheduling.js';
 import { escapeHtml } from '../ui/escapeHtml.js';
 import {
   fetchAllDanceSessions,
@@ -11,6 +11,10 @@ import {
   adminUpdateDanceSignup,
 } from '../adapters/danceSessions.js';
 import { exportDanceSessionPdf, exportDanceRosterCsv } from '../exports/index.js';
+import { createSubmitGuard } from '../ui/rateLimiting.js';
+
+const guardedExportPdf = createSubmitGuard(exportDanceSessionPdf);
+const guardedExportCsv = createSubmitGuard(exportDanceRosterCsv);
 let sessions = [];
 let roster = [];
 let counts = {};
@@ -92,7 +96,7 @@ function renderActions() {
     btn.textContent = 'Generating PDF…';
     if (msgEl) { msgEl.className = 'form-message'; msgEl.textContent = ''; }
     try {
-      await exportDanceSessionPdf();
+      await guardedExportPdf();
       if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'PDF downloaded.'; }
     } catch (err) {
       if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
@@ -107,7 +111,7 @@ function renderActions() {
     btn.disabled = true;
     btn.textContent = 'Exporting…';
     try {
-      await exportDanceRosterCsv();
+      await guardedExportCsv();
       if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'CSV downloaded.'; }
     } catch (err) {
       if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
@@ -134,13 +138,14 @@ function renderContent() {
   html += '<select id="dance-date-filter" style="padding:0.4rem;border:1px solid #ced4da;border-radius:4px">';
   html += '<option value="">All dates</option>';
   dates.forEach((d) => {
-    html += `<option value="${d}" ${dateFilter === d ? 'selected' : ''}>${d}</option>`;
+    html += `<option value="${d}" ${dateFilter === d ? 'selected' : ''}>${formatDate(d)}</option>`;
   });
   html += '</select></div>';
 
   const filteredSessions = dateFilter ? sessions.filter((s) => s.audition_date === dateFilter) : sessions;
 
   html += `
+    <div class="table-responsive">
     <table class="data-table">
       <thead>
         <tr>
@@ -160,7 +165,7 @@ function renderContent() {
     const capText = s.capacity !== null ? `${count} / ${s.capacity}` : `${count}`;
     html += `
       <tr>
-        <td>${s.audition_date}</td>
+        <td>${formatDate(s.audition_date)}</td>
         <td>${formatTime(s.start_time)} – ${formatTime(s.end_time)}</td>
         <td>${escapeHtml(s.label || '—')}</td>
         <td>${s.capacity !== null ? s.capacity : 'Unlimited'}</td>
@@ -170,7 +175,7 @@ function renderContent() {
     `;
   });
 
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
 
   // Roster grouped by session
   html += '<h2 style="margin-top:1.5rem">Attendees by Session</h2>';
@@ -178,7 +183,7 @@ function renderContent() {
   filteredSessions.forEach((s) => {
     const attendees = roster.filter((r) => r.dance_session_id === s.id);
     html += `
-      <h3 style="margin-top:1rem">${s.audition_date} — ${s.label ? escapeHtml(s.label) : formatTime(s.start_time) + ' – ' + formatTime(s.end_time)}</h3>
+      <h3 style="margin-top:1rem">${formatDate(s.audition_date)} — ${s.label ? escapeHtml(s.label) : formatTime(s.start_time) + ' – ' + formatTime(s.end_time)}</h3>
     `;
 
     if (attendees.length === 0) {
@@ -205,7 +210,7 @@ function renderContent() {
 
 function renderAdminOverride() {
   const sessionOptions = sessions
-    .map((s) => `<option value="${s.id}">${s.audition_date} — ${s.label ? escapeHtml(s.label) : formatTime(s.start_time) + '–' + formatTime(s.end_time)}</option>`)
+    .map((s) => `<option value="${s.id}">${formatDate(s.audition_date)} — ${s.label ? escapeHtml(s.label) : formatTime(s.start_time) + '–' + formatTime(s.end_time)}</option>`)
     .join('');
 
   return `
@@ -239,6 +244,7 @@ function bindContentEvents(contentEl) {
   // Delete session buttons
   contentEl.querySelectorAll('.delete-session-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
+      if (!window.confirm('Delete this dance session? Any existing sign-ups will be removed.')) return;
       const sessionId = btn.dataset.id;
       btn.disabled = true;
       btn.textContent = 'Deleting…';

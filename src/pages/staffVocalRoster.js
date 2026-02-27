@@ -1,6 +1,6 @@
 import { getAuthState } from '../auth.js';
 import { isAdmin } from '../domain/roles.js';
-import { formatTime } from '../domain/scheduling.js';
+import { formatTime, formatDate } from '../domain/scheduling.js';
 import { escapeHtml } from '../ui/escapeHtml.js';
 import { VOCAL_SLOT_CAPACITY } from '../domain/vocalBooking.js';
 import {
@@ -12,6 +12,10 @@ import {
   adminOverrideVocalBooking,
 } from '../adapters/vocalBookings.js';
 import { exportVocalSlotPdf, exportVocalRosterCsv } from '../exports/index.js';
+import { createSubmitGuard } from '../ui/rateLimiting.js';
+
+const guardedExportPdf = createSubmitGuard(exportVocalSlotPdf);
+const guardedExportCsv = createSubmitGuard(exportVocalRosterCsv);
 
 let slots = [];
 let roster = [];
@@ -94,7 +98,7 @@ function renderActions() {
     btn.textContent = 'Generating PDF…';
     if (msgEl) { msgEl.className = 'form-message'; msgEl.textContent = ''; }
     try {
-      await exportVocalSlotPdf();
+      await guardedExportPdf();
       if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'PDF downloaded.'; }
     } catch (err) {
       if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
@@ -109,7 +113,7 @@ function renderActions() {
     btn.disabled = true;
     btn.textContent = 'Exporting…';
     try {
-      await exportVocalRosterCsv();
+      await guardedExportCsv();
       if (msgEl) { msgEl.className = 'form-message success'; msgEl.textContent = 'CSV downloaded.'; }
     } catch (err) {
       if (msgEl) { msgEl.className = 'form-message error'; msgEl.textContent = err.message || 'Export failed.'; }
@@ -136,7 +140,7 @@ function renderContent() {
   html += '<select id="vocal-date-filter" style="padding:0.4rem;border:1px solid #ced4da;border-radius:4px">';
   html += '<option value="">All dates</option>';
   dates.forEach((d) => {
-    html += `<option value="${d}" ${dateFilter === d ? 'selected' : ''}>${d}</option>`;
+    html += `<option value="${d}" ${dateFilter === d ? 'selected' : ''}>${formatDate(d)}</option>`;
   });
   html += '</select></div>';
 
@@ -150,6 +154,7 @@ function renderContent() {
   });
 
   html += `
+    <div class="table-responsive">
     <table class="data-table">
       <thead>
         <tr>
@@ -166,7 +171,7 @@ function renderContent() {
     const count = counts[s.id] || 0;
     html += `
       <tr>
-        <td>${s.audition_date}</td>
+        <td>${formatDate(s.audition_date)}</td>
         <td>${formatTime(s.start_time)} – ${formatTime(s.end_time)}</td>
         <td>${count} / ${VOCAL_SLOT_CAPACITY}</td>
         ${admin ? `<td><button class="btn-small btn-secondary delete-slot-btn" data-id="${s.id}">Delete</button></td>` : ''}
@@ -174,13 +179,13 @@ function renderContent() {
     `;
   });
 
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
 
   // Roster grouped by slot
   html += '<h2 style="margin-top:1.5rem">Attendees by Slot</h2>';
 
   for (const [date, dateSlots] of Object.entries(byDate)) {
-    html += `<h3 style="margin-top:1rem">${date}</h3>`;
+    html += `<h3 style="margin-top:1rem">${formatDate(date)}</h3>`;
 
     dateSlots.forEach((s) => {
       const attendees = roster.filter((r) => r.audition_slot_id === s.id);
@@ -212,7 +217,7 @@ function renderContent() {
 
 function renderAdminOverride() {
   const slotOptions = slots
-    .map((s) => `<option value="${s.id}">${s.audition_date} — ${formatTime(s.start_time)}–${formatTime(s.end_time)}</option>`)
+    .map((s) => `<option value="${s.id}">${formatDate(s.audition_date)} — ${formatTime(s.start_time)}–${formatTime(s.end_time)}</option>`)
     .join('');
 
   return `
@@ -246,6 +251,7 @@ function bindContentEvents(contentEl) {
   // Delete slot buttons
   contentEl.querySelectorAll('.delete-slot-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
+      if (!window.confirm('Delete this vocal slot? Any existing bookings will be removed.')) return;
       const slotId = btn.dataset.id;
       btn.disabled = true;
       btn.textContent = 'Deleting…';

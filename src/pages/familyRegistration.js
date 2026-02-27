@@ -6,35 +6,67 @@ import { generatePhotoPath } from '../adapters/storage.js';
 import { validateAcceptanceInput } from '../domain/contracts.js';
 import { hasAcceptedContract } from '../domain/contracts.js';
 import { evaluateRegistration } from '../domain/registration.js';
+import { isBlockedEmailDomain } from '../domain/emailValidation.js';
 import { escapeHtml } from '../ui/escapeHtml.js';
+import { renderContractText } from '../ui/sanitizeHtml.js';
 
 /**
- * Full registration flow for a single student.
- * Steps: student info → parent info → photo upload → contract signing → done
+ * Full registration flow supporting multiple students.
+ * Steps per student: student info → parent info → photo upload → contract signing → done
  */
 
+let allStudents = [];
 let currentStudent = null;
 let currentAcceptances = [];
 let activeContract = null;
 
-async function loadData(userId) {
+async function loadData(userId, selectedStudentId = null) {
   const [studentsResult, contractResult] = await Promise.all([
     fetchStudentsByFamily(userId),
     fetchActiveContract(),
   ]);
 
-  const students = studentsResult.data || [];
+  allStudents = studentsResult.data || [];
   activeContract = contractResult.data;
 
-  // For MVP, work with the first student or allow creation
-  if (students.length > 0) {
-    currentStudent = students[0];
+  // Pick student by selectedStudentId, or fallback to first
+  if (selectedStudentId) {
+    currentStudent = allStudents.find((s) => s.id === selectedStudentId) || null;
+  } else if (allStudents.length > 0) {
+    currentStudent = allStudents[0];
+  } else {
+    currentStudent = null;
+  }
+
+  if (currentStudent) {
     const { data: acceptances } = await fetchAcceptancesForStudent(currentStudent.id);
     currentAcceptances = acceptances || [];
   } else {
-    currentStudent = null;
     currentAcceptances = [];
   }
+}
+
+function renderStudentSelector() {
+  let html = '';
+
+  if (allStudents.length > 1) {
+    const options = allStudents.map((s) => {
+      const selected = currentStudent && s.id === currentStudent.id ? 'selected' : '';
+      return `<option value="${s.id}" ${selected}>${escapeHtml(s.first_name || 'Unnamed')} ${escapeHtml(s.last_name || 'Student')}</option>`;
+    }).join('');
+    html += `
+      <div class="student-selector">
+        <label for="student-select"><strong>Student:</strong></label>
+        <select id="student-select">${options}</select>
+      </div>
+    `;
+  }
+
+  if (allStudents.length >= 1) {
+    html += `<button id="add-student-btn" class="btn-small" style="margin-bottom:1rem">+ Add Another Student</button>`;
+  }
+
+  return html;
 }
 
 function renderChecklist() {
@@ -77,9 +109,18 @@ function renderStudentForm() {
   `;
 }
 
+function getParentDefaults() {
+  // For new students, pre-populate parent fields from an existing sibling
+  if (currentStudent && (currentStudent.parent_first_name || currentStudent.parent_email)) {
+    return currentStudent;
+  }
+  const sibling = allStudents.find((s) => s.parent_first_name || s.parent_email);
+  return sibling || {};
+}
+
 function renderParentForm() {
   if (!currentStudent) return '<section class="form-section"><h2>2. Parent/Guardian Information</h2><p class="placeholder-notice">Complete student info first.</p></section>';
-  const s = currentStudent;
+  const s = getParentDefaults();
   return `
     <section class="form-section">
       <h2>2. Parent/Guardian Information</h2>
@@ -143,7 +184,7 @@ function renderContractSection() {
       <h2>4. Contract Signature</h2>
       <details>
         <summary>View Contract (v${activeContract.version_number})</summary>
-        <div class="contract-text">${escapeHtml(activeContract.text_snapshot)}</div>
+        <div class="contract-text">${renderContractText(activeContract.text_snapshot)}</div>
       </details>
       <form id="contract-form" class="login-form" style="margin-top:0.75rem">
         <label for="reg-student-sig">Student Typed Signature *</label>
@@ -163,6 +204,25 @@ async function updateRegistrationComplete(userId) {
   if (status.complete !== currentStudent.registration_complete) {
     await updateStudent(currentStudent.id, { registration_complete: status.complete }, userId);
     currentStudent.registration_complete = status.complete;
+  }
+}
+
+function bindStudentSelector(userId, refreshFn) {
+  const select = document.getElementById('student-select');
+  if (select) {
+    select.addEventListener('change', () => {
+      refreshFn(select.value);
+    });
+  }
+
+  const addBtn = document.getElementById('add-student-btn');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      currentStudent = null;
+      currentAcceptances = [];
+      // Re-render with empty forms (no selectedStudentId)
+      refreshFn(null);
+    });
   }
 }
 
@@ -197,6 +257,8 @@ function bindForms(userId, refreshFn) {
         );
         if (error) { msg.textContent = 'Error: ' + error.message; msg.className = 'form-message error'; btn.disabled = false; btn.textContent = 'Update Student Info'; return; }
         currentStudent = { ...currentStudent, ...data };
+        await updateRegistrationComplete(userId);
+        refreshFn(currentStudent.id);
       } else {
         const { data, error } = await createStudent({
           familyAccountId: userId,
@@ -207,10 +269,9 @@ function bindForms(userId, refreshFn) {
         });
         if (error) { msg.textContent = 'Error: ' + error.message; msg.className = 'form-message error'; btn.disabled = false; btn.textContent = 'Save Student Info'; return; }
         currentStudent = data;
+        await updateRegistrationComplete(userId);
+        refreshFn(currentStudent.id);
       }
-
-      await updateRegistrationComplete(userId);
-      refreshFn();
     });
   }
 
@@ -234,6 +295,12 @@ function bindForms(userId, refreshFn) {
         return;
       }
 
+      if (isBlockedEmailDomain(fields.parent_email)) {
+        msg.textContent = 'Student email addresses cannot be used. Please use a parent or guardian email.';
+        msg.className = 'form-message error';
+        return;
+      }
+
       btn.disabled = true;
       btn.textContent = 'Saving…';
 
@@ -241,7 +308,7 @@ function bindForms(userId, refreshFn) {
       if (error) { msg.textContent = 'Error: ' + error.message; msg.className = 'form-message error'; btn.disabled = false; btn.textContent = 'Update Parent Info'; return; }
       currentStudent = { ...currentStudent, ...data };
       await updateRegistrationComplete(userId);
-      refreshFn();
+      refreshFn(currentStudent.id);
     });
   }
 
@@ -263,17 +330,25 @@ function bindForms(userId, refreshFn) {
 
       btn.disabled = true;
       btn.textContent = 'Uploading…';
+      msg.textContent = '';
 
-      const path = generatePhotoPath(userId, file.name);
-      const { error: uploadError } = await uploadPhoto(path, file);
-      if (uploadError) { msg.textContent = 'Upload failed: ' + uploadError.message; msg.className = 'form-message error'; btn.disabled = false; btn.textContent = 'Upload Photo'; return; }
+      try {
+        const path = generatePhotoPath(userId, file.name);
+        const { error: uploadError } = await uploadPhoto(path, file);
+        if (uploadError) { msg.textContent = 'Upload failed: ' + (uploadError.message || JSON.stringify(uploadError)); msg.className = 'form-message error'; btn.disabled = false; btn.textContent = 'Upload Photo'; return; }
 
-      const { data, error: updateError } = await updateStudent(currentStudent.id, { photo_storage_path: path }, userId);
-      if (updateError) { msg.textContent = 'Error saving photo reference: ' + updateError.message; msg.className = 'form-message error'; btn.disabled = false; btn.textContent = 'Upload Photo'; return; }
+        const { data, error: updateError } = await updateStudent(currentStudent.id, { photo_storage_path: path }, userId);
+        if (updateError) { msg.textContent = 'Error saving photo reference: ' + (updateError.message || JSON.stringify(updateError)); msg.className = 'form-message error'; btn.disabled = false; btn.textContent = 'Upload Photo'; return; }
 
-      currentStudent = { ...currentStudent, ...data };
-      await updateRegistrationComplete(userId);
-      refreshFn();
+        currentStudent = { ...currentStudent, ...data };
+        await updateRegistrationComplete(userId);
+        refreshFn(currentStudent.id);
+      } catch (err) {
+        msg.textContent = 'Unexpected error: ' + (err.message || String(err));
+        msg.className = 'form-message error';
+        btn.disabled = false;
+        btn.textContent = 'Upload Photo';
+      }
     });
 
     // Load existing photo preview
@@ -312,7 +387,7 @@ function bindForms(userId, refreshFn) {
       const { data: acceptances } = await fetchAcceptancesForStudent(currentStudent.id);
       currentAcceptances = acceptances || [];
       await updateRegistrationComplete(userId);
-      refreshFn();
+      refreshFn(currentStudent.id);
     });
   }
 }
@@ -332,6 +407,7 @@ export function renderFamilyRegistration() {
   container.innerHTML = `
     <h1>Student Registration</h1>
     <p><a href="#/family">&larr; Back to Family Dashboard</a></p>
+    <div id="reg-student-selector"></div>
     <div id="reg-checklist"></div>
     <div id="reg-content"><p>Loading…</p></div>
   `;
@@ -339,13 +415,15 @@ export function renderFamilyRegistration() {
   const { user } = getAuthState();
   if (!user) return container;
 
-  async function refresh() {
-    await loadData(user.id);
+  async function refresh(selectedStudentId) {
+    await loadData(user.id, selectedStudentId);
+    const selectorEl = document.getElementById('reg-student-selector');
     const checklistEl = document.getElementById('reg-checklist');
     const contentEl = document.getElementById('reg-content');
     if (!contentEl) return;
 
-    if (checklistEl) checklistEl.innerHTML = renderChecklist();
+    if (selectorEl) selectorEl.innerHTML = renderStudentSelector();
+    if (checklistEl) checklistEl.innerHTML = currentStudent ? renderChecklist() : '';
 
     contentEl.innerHTML = `
       ${renderStudentForm()}
@@ -353,9 +431,10 @@ export function renderFamilyRegistration() {
       ${renderPhotoUpload()}
       ${renderContractSection()}
     `;
+    bindStudentSelector(user.id, refresh);
     bindForms(user.id, refresh);
   }
 
-  setTimeout(refresh, 0);
+  setTimeout(() => refresh(null), 0);
   return container;
 }

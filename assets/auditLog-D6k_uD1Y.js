@@ -1,1 +1,0 @@
-import{d as e}from"./index-DB_Xnewy.js";async function p(o,d,i,n={}){var r;const{data:t}=await e.auth.getUser(),a=(r=t==null?void 0:t.user)==null?void 0:r.id;if(!a)return{data:null,error:{message:"Not authenticated."}};const{data:s,error:c}=await e.rpc("log_admin_audit",{p_action:o,p_actor_id:a,p_table_name:d,p_record_id:i,p_details:n});return{data:s,error:c}}export{p as l};
